@@ -2,6 +2,18 @@
 {% block pagetitle %}Home{% endblock %}
 {% block header %}Home{% endblock %}
 {% block content %}
-<p>This is the homepage.</p>
-<p>{{g.user}}</p>
+<div class="card-columns">
+    <div class="card mb-3" style="max-width: 18rem;">
+        <div class="card-header"><h5 class="card-title">Registered Members</h5></div>
+        <div class="card-body text-center display-4">
+            {{registered_members}}
+        </div>
+    </div>
+    <div class="card mb-3" style="max-width: 18rem;">
+        <div class="card-header"><h5 class="card-title">Unaccepted Members</h5></div>
+        <div class="card-body text-center display-4">
+            {{unaccepted_members}}
+        </div>
+    </div>
+</div>
 {% endblock %}

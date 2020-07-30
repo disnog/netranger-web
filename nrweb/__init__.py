@@ -17,8 +17,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from flask import Flask
+from flask_breadcrumbs import Breadcrumbs
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
+Breadcrumbs(app=app)
 
 from nrweb import views

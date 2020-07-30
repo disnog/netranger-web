@@ -8,31 +8,69 @@
           integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 </head>
 <body>
-<ul class="nav nav-pills">
-    <li class="nav-item">
-        <a class="nav-link{% if request.endpoint == 'home' %} active{% endif %}" href="/home">Home</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link{% if request.endpoint == 'members' %} active{% endif %}" href="/members">Members</a>
-    </li>
-    {% if 'user' in g %}
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-           aria-expanded="false">{{g.user['username']}}#{{g.user['discriminator']}}
-        </a>
-        <div class="dropdown-menu">
-            <a class="dropdown-item{% if request.endpoint == 'profile' %} active{% endif %}" href="/profile">My Profile</a>
-            <a class="dropdown-item" href="/logout">Logout</a>
-        </div>
-    </li>
-    {% else %}
-    <li class="nav-item">
-        <a class="nav-link" href="/login">Login</a>
-    </li>
-    {% endif %}
-</ul>
-<h1>{% block header%}{% endblock %}</h1>
-{% block content %}{% endblock %}
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="/home"><img src="{{url_for('static',filename='logo.png')}}" width="30" height="30"
+                                              class="d-inline-block align-top" alt=""/>
+        NetEng Discord
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown"
+            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+        <ul class="navbar-nav">
+            <li class="nav-item{% if request.endpoint == 'home' %} active{% endif %}">
+                <a class="nav-link" href="/home">Home{% if request.endpoint == 'home' %}<span
+                        class="sr-only"> (current)</span>{%
+                    endif %}</a>
+            </li>
+            <li class="nav-item{% if request.endpoint == 'members' %} active{% endif %}">
+                <a class="nav-link" href="/members">Members{% if request.endpoint == 'members' %}<span class="sr-only"> (current)</span>{%
+                    endif %}</a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="collapse navbar-collapse" id="navbarNavDropdownRight">
+        <ul class="navbar-nav">
+            {% if 'user' in g %}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
+                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <img src="https://cdn.discordapp.com/{% if g.user['avatar'] %}avatars/{{g.user['id']}}/{{g.user['avatar']}}{% else %}embed/avatars/{{ g.user['discriminator'] | int %5 }}{% endif %}.png"
+                         width="30" height="30" class="d-inline-block rounded-circle" alt="">
+                    {{g.user['username']}}#{{g.user['discriminator']}}
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                    <a class="dropdown-item" href="/profile">My Profile</a>
+                    <a class="dropdown-item" href="/logout">Logout</a>
+                </div>
+            </li>
+            {% else %}
+            <li class="nav-item">
+                <a class="nav-link" href="/login">Login</a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+</nav>
+
+<div class="card">
+    <div class="card-header">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li class="breadcrumb-item{{ ' active" aria-current="page' if loop.last }}"><a href="{{ breadcrumb.url }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ol>
+        </nav>
+
+        <h1>{% block header%}{% endblock %}</h1>
+    </div>
+    <div class="card-body">
+        {% block content %}{% endblock %}
+    </div>
+</div>
 
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
         integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"

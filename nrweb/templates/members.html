@@ -2,5 +2,24 @@
 {% block pagetitle %}Members{% endblock %}
 {% block header %}Members{% endblock %}
 {% block content %}
-<p>This is where you'll see the member list.</p>
+<table class="table table-sm">
+    <thead>
+    <tr>
+        <th scope="col">#</th>
+        <th scope="col">User</th>
+        <th scope="col">First Joined</th>
+    </tr>
+    </thead>
+    <tbody>{% for member in memberlist|sort(attribute='member_number') %}
+    <tr>
+        <th scope="row">{{member['member_number']}}</th>
+        <td><a href="{{url_for('profile',userid=member['_id'])}}">{{member['name']}}#{{member['discriminator']}}{%
+            if member['nick'] %} ({{member['nick']}}){% endif %}</a>{% for role in member['permanent_roles'] %}
+            <span class="badge badge-pill badge-primary">{{role}}</span>{% endfor %}
+        </td>
+        <td>{{member['first_joined_at'] | utctime}}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
 {% endblock %}
