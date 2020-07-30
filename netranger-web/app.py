@@ -16,13 +16,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import Flask, redirect, url_for, render_template, request, session
+from flask import Flask, redirect, url_for, render_template, request, session, g
 import os
 from requests_oauthlib import OAuth2Session
 import urllib.parse
 import json
 from flask_pymongo import PyMongo
 import uuid
+from functools import wraps
 
 NRWEB_ENVIRONMENT = os.environ.get("NRWEB_ENVIRONMENT", "prod").lower()
 if NRWEB_ENVIRONMENT in ["dev"]:
@@ -39,7 +40,7 @@ OAUTH2_REDIRECT_URI = os.environ.get(
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://discordapp.com/api")
 AUTHORIZATION_BASE_URL = API_BASE_URL + "/oauth2/authorize"
 TOKEN_URL = API_BASE_URL + "/oauth2/token"
-MONGO_URI = os.environ.get("MONGO_URI","mongodb://localhost:27017/NRWEB")
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/NRWEB")
 
 if "http://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "dev":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
@@ -71,54 +72,47 @@ app.config["MONGO_URI"] = MONGO_URI
 # mongo = PyMongo(app)
 
 
+@app.before_request
+def do_before_request():
+    if "oauth2_token" in session:
+        g.discord = make_session(token=session.get("oauth2_token"))
+        g.user = g.discord.get(API_BASE_URL + "/users/@me").json()
+
+
+def is_member(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        # Check if user is logged in
+        if "user" in g:
+            return f(*args, **kwargs)
+        else:
+            return redirect(url_for("login"))
+
+    return decorator
+
+
 @app.route("/")
 @app.route("/home")
 def home():
-    if "oauth2_token" in session:
-        discord = make_session(token=session.get("oauth2_token"))
-        session["user"] = discord.get(API_BASE_URL + "/users/@me").json()
     return render_template("home.html")
 
 
-@app.route("/join")
-def join():
+@app.route("/members")
+@is_member
+def members():
     return render_template("members.html")
 
 
-@app.route("/members")
-def members():
-    if "oauth2_token" not in session:
-        return redirect(url_for("login"))
-    else:
-        discord = make_session(token=session.get("oauth2_token"))
-        session["user"] = discord.get(API_BASE_URL + "/users/@me").json()
-        return render_template("members.html")
-
 @app.route("/profile")
+@is_member
 def myprofile():
-    if "oauth2_token" not in session:
-        return redirect(url_for("login"))
-    else:
-        discord = make_session(token=session.get("oauth2_token"))
-        session["user"] = discord.get(API_BASE_URL + "/users/@me").json()
-        return redirect(url_for("profile",userid=session["user"]["id"]))
+    return redirect(url_for("profile", userid=g.user["id"]))
+
 
 @app.route("/profile/<userid>")
+@is_member
 def profile(userid):
-    # Check if login
-    if "oauth2_token" not in session:
-        return redirect(
-            url_for(
-                "login",
-                postlogin=urllib.parse.quote(
-                    json.dumps({"endpoint": "raid", "raidid": raidid})
-                ),
-            )
-        )
-    else:
-        discord = make_session(token=session.get("oauth2_token"))
-        session["user"] = discord.get(API_BASE_URL + "/users/@me").json()
-        return render_template("profile.html", userid=userid)
+    return render_template("profile.html", userid=userid)
 
 
 @app.route("/login")
@@ -163,10 +157,6 @@ def logout():
     redirect_target = url_for("home")
     return redirect(redirect_target)
 
-
-@app.route("/admin/")
-def admin():
-    return redirect(request.args)
 
 
 if __name__ == "__main__":

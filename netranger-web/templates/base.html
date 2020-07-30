@@ -15,10 +15,10 @@
     <li class="nav-item">
         <a class="nav-link{% if request.endpoint == 'members' %} active{% endif %}" href="/members">Members</a>
     </li>
-    {% if 'user' in session %}
+    {% if 'user' in g %}
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-           aria-expanded="false">{{session['user']['username']}}#{{session['user']['discriminator']}}
+           aria-expanded="false">{{g.user['username']}}#{{g.user['discriminator']}}
         </a>
         <div class="dropdown-menu">
             <a class="dropdown-item{% if request.endpoint == 'profile' %} active{% endif %}" href="/profile">My Profile</a>
