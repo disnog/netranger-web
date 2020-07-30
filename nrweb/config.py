@@ -17,6 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+from urllib.parse import quote_plus
 
 OAUTH2_REDIRECT_URI = os.environ.get(
     "OAUTH2_REDIRECT_URI", "http://localhost:5000/login_callback"
@@ -31,4 +32,9 @@ SECRET_KEY = os.environ.get("SECRET_KEY", OAUTH2_CLIENT_SECRET)
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://discordapp.com/api")
 AUTHORIZATION_BASE_URL = API_BASE_URL + "/oauth2/authorize"
 TOKEN_URL = API_BASE_URL + "/oauth2/token"
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/nrweb")
+MONGO_USER = quote_plus(os.environ.get("MONGO_USER"))
+MONGO_PASS = quote_plus(os.environ.get("MONGO_PASS"))
+MONGO_HOST = os.environ.get("MONGO_HOST","localhost:27017")
+MONGO_DB = os.environ.get("MONGO_DB","network_ranger")
+MONGO_AUTHSOURCE = os.environ.get("MONGO_AUTHSOURCE","admin")
+MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}/{MONGO_DB}?authSource={MONGO_AUTHSOURCE}"
