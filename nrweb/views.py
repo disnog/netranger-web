@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# netranger-web - app.py
+# nrweb - views.py
 # Copyright (C) 2020  Networking Discord
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,34 +16,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import Flask, redirect, url_for, render_template, request, session, g
-import os
+from flask import redirect, url_for, render_template, request, session, g
+from nrweb import app
 from requests_oauthlib import OAuth2Session
 import urllib.parse
 import json
 from flask_pymongo import PyMongo
 import uuid
 from functools import wraps
-
-NRWEB_ENVIRONMENT = os.environ.get("NRWEB_ENVIRONMENT", "prod").lower()
-if NRWEB_ENVIRONMENT in ["dev"]:
-    DEBUG = True
-else:
-    DEBUG = False
-
-OAUTH2_CLIENT_ID = os.environ["OAUTH2_CLIENT_ID"]
-OAUTH2_CLIENT_SECRET = os.environ["OAUTH2_CLIENT_SECRET"]
-APP_SECRET = os.environ.get("APP_SECRET", OAUTH2_CLIENT_SECRET)
-OAUTH2_REDIRECT_URI = os.environ.get(
-    "OAUTH2_REDIRECT_URI", "http://localhost:5000/login_callback"
-)
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://discordapp.com/api")
-AUTHORIZATION_BASE_URL = API_BASE_URL + "/oauth2/authorize"
-TOKEN_URL = API_BASE_URL + "/oauth2/token"
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/NRWEB")
-
-if "http://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "dev":
-    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
 
 
 def token_updater(token):
@@ -52,31 +32,26 @@ def token_updater(token):
 
 def make_session(token=None, state=None, scope=None):
     return OAuth2Session(
-        client_id=OAUTH2_CLIENT_ID,
+        client_id=app.config["OAUTH2_CLIENT_ID"],
         token=token,
         state=state,
         scope=scope,
-        redirect_uri=OAUTH2_REDIRECT_URI,
+        redirect_uri=app.config["OAUTH2_REDIRECT_URI"],
         auto_refresh_kwargs={
-            "client_id": OAUTH2_CLIENT_ID,
-            "client_secret": OAUTH2_CLIENT_SECRET,
+            "client_id": app.config["OAUTH2_CLIENT_ID"],
+            "client_secret": app.config["OAUTH2_CLIENT_SECRET"],
         },
-        auto_refresh_url=TOKEN_URL,
+        auto_refresh_url=app.config["TOKEN_URL"],
         token_updater=token_updater,
     )
 
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = APP_SECRET
-app.config["MONGO_URI"] = MONGO_URI
-# mongo = PyMongo(app)
-
-
 @app.before_request
 def do_before_request():
+    g.db = PyMongo(app)
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
-        g.user = g.discord.get(API_BASE_URL + "/users/@me").json()
+        g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
 
 
 def is_member(f):
@@ -120,7 +95,7 @@ def profile(userid):
 def login(postlogin=None):
     scope = request.args.get("scope", "identify")
     discord = make_session(scope=scope.split(" "))
-    authorization_url, state = discord.authorization_url(AUTHORIZATION_BASE_URL)
+    authorization_url, state = discord.authorization_url(app.config["AUTHORIZATION_BASE_URL"])
     if postlogin:
         session["postlogin"] = json.loads(urllib.parse.unquote(postlogin))
     else:
@@ -135,8 +110,8 @@ def login_callback():
         return request.values["error"]
     discord = make_session(state=session.get("oauth2_state"))
     token = discord.fetch_token(
-        TOKEN_URL,
-        client_secret=OAUTH2_CLIENT_SECRET,
+        app.config["TOKEN_URL"],
+        client_secret=app.config["OAUTH2_CLIENT_SECRET"],
         authorization_response=request.url,
     )
     session["oauth2_token"] = token
@@ -156,8 +131,3 @@ def logout():
     session.clear()
     redirect_target = url_for("home")
     return redirect(redirect_target)
-
-
-
-if __name__ == "__main__":
-    app.run(debug=DEBUG)
