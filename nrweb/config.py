@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+# nrweb - config.py
+# Copyright (C) 2020  Networking Discord
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import os
+
+OAUTH2_REDIRECT_URI = os.environ.get(
+    "OAUTH2_REDIRECT_URI", "http://localhost:5000/login_callback"
+)
+NRWEB_ENVIRONMENT = os.environ.get("NRWEB_ENVIRONMENT", "prod").lower()
+if "http://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "dev":
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
+
+OAUTH2_CLIENT_ID = os.environ["OAUTH2_CLIENT_ID"]
+OAUTH2_CLIENT_SECRET = os.environ["OAUTH2_CLIENT_SECRET"]
+SECRET_KEY = os.environ.get("SECRET_KEY", OAUTH2_CLIENT_SECRET)
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://discordapp.com/api")
+AUTHORIZATION_BASE_URL = API_BASE_URL + "/oauth2/authorize"
+TOKEN_URL = API_BASE_URL + "/oauth2/token"
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/nrweb")
