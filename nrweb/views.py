@@ -26,6 +26,7 @@ from flask_pymongo import PyMongo
 import uuid
 from functools import wraps
 from datetime import datetime
+import requests
 
 
 def token_updater(token):
@@ -67,45 +68,74 @@ def is_member(f):
 
     return decorator
 
-@app.template_filter('utctime')
+
+def enrich_user(user):
+    r = requests.get(
+        app.config["API_BASE_URL"]
+        + "/guilds/"
+        + str(app.config["GUILD_ID"])
+        + "/members/"
+        + str(user["_id"]),
+        headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
+    )
+    discord_member = r.json()
+    user.update(discord_member['user'])
+    return user
+
+
+@app.template_filter("utctime")
 def utctime(s):
-    return datetime.utcfromtimestamp(s).strftime(
-                "%Y-%b-%d %H:%M:%S UTC"
-            )
+    return datetime.utcfromtimestamp(s).strftime("%Y-%b-%d %H:%M:%S UTC")
 
 
 @app.route("/")
 @app.route("/home")
-@register_breadcrumb(app,'.',"Home")
+@register_breadcrumb(app, ".", "Home")
 def home():
     registered_members = g.db.db.users.count({"member_number": {"$exists": True}})
     unaccepted_members = g.db.db.users.count({"member_number": {"$exists": False}})
-    print()
-    return render_template("home.html",registered_members=registered_members,unaccepted_members=unaccepted_members)
+    return render_template(
+        "home.html",
+        registered_members=registered_members,
+        unaccepted_members=unaccepted_members,
+    )
 
 
 @app.route("/members")
 @is_member
-@register_breadcrumb(app,'.home',"Members")
+@register_breadcrumb(app, ".home", "Members")
 def members():
-    memberlist = g.db.db.users.find({ "member_number": { "$exists": True } })
-    return render_template("members.html",memberlist=memberlist)
+    memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
+    return render_template("members.html", memberlist=memberlist)
 
 
 @app.route("/myprofile")
 @is_member
 def myprofile():
-    return redirect(url_for("members", userid=g.user["id"]))
+    return redirect(url_for("profile", userid=int(g.user["id"])))
+
 
 def userid_breadcrumb_constructor(*args, **kwargs):
-    user = g.db.db.users.find_one({"_id": request.view_args['userid']},{ 'name':True,'discriminator':True })
-    return [{'text': user['name']+'#'+user['discriminator'], 'url': url_for(request.endpoint,userid=request.view_args['userid'])}]
+    user = g.db.db.users.find_one(
+        {"_id": request.view_args["userid"]}, {"name": True, "discriminator": True}
+    )
+    return [
+        {
+            "text": user["name"] + "#" + user["discriminator"],
+            "url": url_for(request.endpoint, userid=request.view_args["userid"]),
+        }
+    ]
+
 
 @app.route("/members/<int:userid>")
 @is_member
-@register_breadcrumb(app,'.home.myprofile','Profile',dynamic_list_constructor=userid_breadcrumb_constructor)
+@register_breadcrumb(
+    app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
+)
 def profile(userid):
-    return render_template("profile.html", userid=userid)
+    user = g.db.db.users.find_one({"_id": request.view_args["userid"]})
+    user = enrich_user(user)
+    return render_template("profile.html", user=user)
 
 
 @app.route("/login")
@@ -113,7 +143,9 @@ def profile(userid):
 def login(postlogin=None):
     scope = request.args.get("scope", "identify")
     discord = make_session(scope=scope.split(" "))
-    authorization_url, state = discord.authorization_url(app.config["AUTHORIZATION_BASE_URL"])
+    authorization_url, state = discord.authorization_url(
+        app.config["AUTHORIZATION_BASE_URL"]
+    )
     if postlogin:
         session["postlogin"] = json.loads(urllib.parse.unquote(postlogin))
     else:
