@@ -72,8 +72,7 @@ def is_member(f,**kwargs):
 
     return decorator
 
-
-def enrich_user(user):
+def enrich_member(user):
     r = requests.get(
         app.config["API_BASE_URL"]
         + "/guilds/"
@@ -82,8 +81,23 @@ def enrich_user(user):
         + str(user["_id"]),
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
     )
-    discord_member = r.json()
-    user.update(discord_member['user'])
+    # Only enrich if the user actually is in the guild.
+    if r.ok:
+        discord_member = r.json()
+        user.update(discord_member['user'])
+    return user
+
+def enrich_user(user):
+    r = requests.get(
+        app.config["API_BASE_URL"]
+        + "/users/"
+        + str(user["_id"]),
+        headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
+    )
+    # Only enrich if the user actually exists.
+    if r.ok:
+        discord_user = r.json()
+        user.update(discord_user)
     return user
 
 
