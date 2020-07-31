@@ -57,14 +57,18 @@ def do_before_request():
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
 
 
-def is_member(f):
+def is_member(f,**kwargs):
     @wraps(f)
     def decorator(*args, **kwargs):
         # Check if user is logged in
         if "user" in g:
             return f(*args, **kwargs)
         else:
-            return redirect(url_for("login"))
+            postlogin = urllib.parse.quote(
+                json.dumps({"endpoint": request.endpoint, **request.view_args})
+            )
+            print(f"Setting postlogin: {postlogin}")
+            return redirect(url_for("login",postlogin=postlogin))
 
     return decorator
 
