@@ -63,7 +63,7 @@ def do_before_request():
         g.guild = g.db.db.guilds.find_one({"_id": app.config["GUILD_ID"]})
 
 
-def has_role(role_cn="members"):
+def has_role(role_cn="members", fail_action="auto"):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -79,7 +79,19 @@ def has_role(role_cn="members"):
                         # The user has the role
                         return f(*args, **kwargs)
                     else:
-                        abort(401)
+                        if fail_action.lower() not in ['auto','401','entry']:
+                            fail_action = 'auto'
+                        if fail_action.lower() == 'auto':
+                            # Set unauthorized action to entry if the role common name is members.
+                            # Otherwise, return 401.
+                            if role_cn == 'members':
+                                fail_action = 'entry'
+                            else:
+                                fail_action = '401'
+                        if fail_action.lower() == 'entry':
+                            redirect(url_for("entry"))
+                        elif fail_action.lower() == '401':
+                            abort(401)
                 else:
                     # The user is not currently on the server
                     return redirect(url_for("join", postlogin=postlogin))
