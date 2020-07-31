@@ -38,7 +38,7 @@
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <img src="https://cdn.discordapp.com/{% if g.user['avatar'] %}avatars/{{g.user['id']}}/{{g.user['avatar']}}{% else %}embed/avatars/{{ g.user['discriminator'] | int %5 }}{% endif %}.png"
-                         width="30" height="30" class="d-inline-block rounded-circle" alt="">
+                         width="30" height="30" class="d-inline-block rounded-circle" alt=""/>
                     {{g.user['username']}}#{{g.user['discriminator']}}
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">

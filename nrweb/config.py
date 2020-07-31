@@ -29,6 +29,8 @@ if "http://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "dev":
 OAUTH2_CLIENT_ID = os.environ["OAUTH2_CLIENT_ID"]
 OAUTH2_CLIENT_SECRET = os.environ["OAUTH2_CLIENT_SECRET"]
 SECRET_KEY = os.environ.get("SECRET_KEY", OAUTH2_CLIENT_SECRET)
+GUILD_ID = quote_plus(os.environ.get("GUILD_ID"))
+BOT_TOKEN = quote_plus(os.environ.get("BOT_TOKEN"))
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://discordapp.com/api")
 AUTHORIZATION_BASE_URL = API_BASE_URL + "/oauth2/authorize"
 TOKEN_URL = API_BASE_URL + "/oauth2/token"

@@ -1,5 +1,20 @@
 {% extends "base.html" %}
 {% block pagetitle %}Member Profile{% endblock %}
 {% block content %}
-<p>This is the profile for {{userid}}</p>
+<div class="card-columns">
+    <div class="card mb-3 text-center">
+        <img src="https://cdn.discordapp.com/{% if user['avatar'] %}avatars/{{user['id']}}/{{user['avatar']}}{% else %}embed/avatars/{{ user['discriminator'] | int %5 }}{% endif %}.png"
+             class="card-img-top rounded-circle p-4" alt="" style="max-width: 15rem;">
+        <div class="card-body text-center h4">
+            {{user['name']}}#{{user['discriminator']}}
+            {% if user['nick'] %}<div class="h5">
+                {{user['nick']}}
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {{user}}
+        </div>
+    </div>
+</div>
 {% endblock %}
