@@ -92,19 +92,18 @@ def members():
     return render_template("members.html",memberlist=memberlist)
 
 
-@app.route("/profile")
+@app.route("/myprofile")
 @is_member
-@register_breadcrumb(app,'.home',"Profile")
 def myprofile():
-    return redirect(url_for("profile", userid=g.user["id"]))
+    return redirect(url_for("members", userid=g.user["id"]))
 
 def userid_breadcrumb_constructor(*args, **kwargs):
-    user = g.db.db.users.find_one({"_id": int(request.view_args['userid'])},{ 'name':True,'discriminator':True })
+    user = g.db.db.users.find_one({"_id": request.view_args['userid']},{ 'name':True,'discriminator':True })
     return [{'text': user['name']+'#'+user['discriminator'], 'url': url_for(request.endpoint,userid=request.view_args['userid'])}]
 
-@app.route("/profile/<userid>")
+@app.route("/members/<int:userid>")
 @is_member
-@register_breadcrumb(app,'.home.myprofile','',dynamic_list_constructor=userid_breadcrumb_constructor)
+@register_breadcrumb(app,'.home.myprofile','Profile',dynamic_list_constructor=userid_breadcrumb_constructor)
 def profile(userid):
     return render_template("profile.html", userid=userid)
 
