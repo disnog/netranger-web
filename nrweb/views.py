@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import redirect, url_for, render_template, request, session, g
+from flask import redirect, url_for, render_template, request, session, g, abort
 from flask_breadcrumbs import register_breadcrumb
 from nrweb import app
 from requests_oauthlib import OAuth2Session
@@ -55,22 +55,42 @@ def do_before_request():
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
-
-
-def is_member(f,**kwargs):
-    @wraps(f)
-    def decorator(*args, **kwargs):
-        # Check if user is logged in
-        if "user" in g:
-            return f(*args, **kwargs)
-        else:
-            postlogin = urllib.parse.quote(
-                json.dumps({"endpoint": request.endpoint, **request.view_args})
+        g.user.update(
+            g.db.db.users.find_one(
+                {"_id": int(g.user["id"])}, {"permanent_roles": True}
             )
-            print(f"Setting postlogin: {postlogin}")
-            return redirect(url_for("login",postlogin=postlogin))
+        )
+        g.guild = g.db.db.guilds.find_one({"_id": app.config["GUILD_ID"]})
 
+
+def has_role(role_cn="members"):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            # Check if user is logged in
+            if "user" in g:
+                g.user = enrich_member(g.user)
+                if "roles" in g.user:
+                    # The user is currently on the server
+                    members_roleid = next(
+                        x for x in g.guild["known_roles"] if x["significance"] == role_cn
+                    )["id"]
+                    if members_roleid in g.user['roles']:
+                        # The user has the role
+                        return f(*args, **kwargs)
+                    else:
+                        abort(401)
+                else:
+                    # The user is not currently on the server
+                    return redirect(url_for("join", postlogin=postlogin))
+            else:
+                postlogin = urllib.parse.quote(
+                    json.dumps({"endpoint": request.endpoint, **request.view_args})
+                )
+                return redirect(url_for("login", postlogin=postlogin))
+        return wrapper
     return decorator
+
 
 def enrich_member(user):
     r = requests.get(
@@ -84,14 +104,14 @@ def enrich_member(user):
     # Only enrich if the user actually is in the guild.
     if r.ok:
         discord_member = r.json()
-        user.update(discord_member['user'])
+        discord_member.update(discord_member.pop("user"))
+        user.update({"nick": discord_member["nick"], "roles": discord_member["roles"]})
     return user
+
 
 def enrich_user(user):
     r = requests.get(
-        app.config["API_BASE_URL"]
-        + "/users/"
-        + str(user["_id"]),
+        app.config["API_BASE_URL"] + "/users/" + str(user["_id"]),
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
     )
     # Only enrich if the user actually exists.
@@ -120,7 +140,7 @@ def home():
 
 
 @app.route("/members")
-@is_member
+@has_role(role_cn='members')
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
@@ -128,7 +148,7 @@ def members():
 
 
 @app.route("/myprofile")
-@is_member
+@has_role(role_cn='members')
 def myprofile():
     return redirect(url_for("profile", userid=int(g.user["id"])))
 
@@ -146,7 +166,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 
 
 @app.route("/members/<int:userid>")
-@is_member
+@has_role(role_cn='members')
 @register_breadcrumb(
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
