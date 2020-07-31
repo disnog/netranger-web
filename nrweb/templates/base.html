@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Networking Discord :: {% block pagetitle%}{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="/home"><img src="{{url_for('static',filename='logo.png')}}" width="30" height="30"
+                                              class="d-inline-block align-top" alt=""/>
+        NetEng Discord
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown"
+            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+        <ul class="navbar-nav">
+            <li class="nav-item{% if request.endpoint == 'home' %} active{% endif %}">
+                <a class="nav-link" href="/home">Home{% if request.endpoint == 'home' %}<span
+                        class="sr-only"> (current)</span>{%
+                    endif %}</a>
+            </li>
+            <li class="nav-item{% if request.endpoint in ['members','profile'] %} active{% endif %}">
+                <a class="nav-link" href="/members">Members{% if request.endpoint in ['members','profile'] %}<span class="sr-only"> (current)</span>{%
+                    endif %}</a>
+            </li>
+
+        </ul>
+    </div>
+    {% if 'user' in g %}
+    <ul class="navbar-nav">
+            <li class="nav-item dropdown">
+                <a class="nav-link btn btn-outline-secondary dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
+                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    {{g.user['username']}}#{{g.user['discriminator']}}
+                    <img src="https://cdn.discordapp.com/{% if g.user['avatar'] %}avatars/{{g.user['id']}}/{{g.user['avatar']}}{% else %}embed/avatars/{{ g.user['discriminator'] | int %5 }}{% endif %}.png"
+                         width="30" height="30" class="d-inline-block rounded-circle" alt=""/>
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                    <a class="dropdown-item" href="/myprofile">My Profile</a>
+                    <a class="dropdown-item" href="/logout">Logout</a>
+                </div>
+            </li>
+    </ul>
+            {% endif %}
+    {% if 'user' not in g %}<a href="{{url_for('join')}}" class="btn btn-outline-success my-2 my-sm-0">Join</a> &nbsp; <a href="{{url_for('login')}}" class="btn btn-outline-success my-2 my-sm-0">Login</a>{% endif %}
+</nav>
+
+<div class="card">
+    <div class="card-header">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li class="breadcrumb-item{% if loop.last %} active" aria-current="page{% endif %}"><a
+                        href="{{ breadcrumb.url }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ol>
+        </nav>
+    </div>
+    <div class="card-body">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+        integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+        crossorigin="anonymous"></script>
+</body>
+</html>
