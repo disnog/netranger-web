@@ -28,18 +28,13 @@
                 <a class="nav-link" href="/members">Members{% if request.endpoint == 'members' %}<span class="sr-only"> (current)</span>{%
                     endif %}</a>
             </li>
-        </ul>
-    </div>
-
-    <div class="collapse navbar-collapse" id="navbarNavDropdownRight">
-        <ul class="navbar-nav">
             {% if 'user' in g %}
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <img src="https://cdn.discordapp.com/{% if g.user['avatar'] %}avatars/{{g.user['id']}}/{{g.user['avatar']}}{% else %}embed/avatars/{{ g.user['discriminator'] | int %5 }}{% endif %}.png"
-                         width="30" height="30" class="d-inline-block rounded-circle" alt=""/>
                     {{g.user['username']}}#{{g.user['discriminator']}}
+                    <img src="https://cdn.discordapp.com/{% if g.user['avatar'] %}avatars/{{g.user['id']}}/{{g.user['avatar']}}{% else %}embed/avatars/{{ g.user['discriminator'] | int %5 }}{% endif %}.png"
+                         width="30" height="30" class="d-inline-block align-top rounded-circle" alt=""/>
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
                     <a class="dropdown-item" href="/myprofile">My Profile</a>
@@ -60,7 +55,8 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 {% for breadcrumb in breadcrumbs %}
-                <li class="breadcrumb-item{{ ' active" aria-current="page' if loop.last }}"><a href="{{ breadcrumb.url }}">{{ breadcrumb.text }}</a></li>
+                <li class="breadcrumb-item{% if loop.last %} active" aria-current="page{% endif %}"><a
+                        href="{{ breadcrumb.url }}">{{ breadcrumb.text }}</a></li>
                 {% endfor %}
             </ol>
         </nav>
