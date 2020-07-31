@@ -73,34 +73,41 @@ def has_role(role_cn="members", fail_action="auto"):
                 if "roles" in g.user:
                     # The user is currently on the server
                     members_roleid = next(
-                        x for x in g.guild["known_roles"] if x["significance"] == role_cn
+                        x
+                        for x in g.guild["known_roles"]
+                        if x["significance"] == role_cn
                     )["id"]
-                    if members_roleid in g.user['roles']:
+                    if members_roleid in g.user["roles"]:
                         # The user has the role
                         return f(*args, **kwargs)
                     else:
-                        if fail_action.lower() not in ['auto','401','entry']:
-                            fail_action = 'auto'
-                        if fail_action.lower() == 'auto':
+                        if fail_action.lower() not in ["auto", "401", "entry"]:
+                            fail_action = "auto"
+                        if fail_action.lower() == "auto":
                             # Set unauthorized action to entry if the role common name is members.
                             # Otherwise, return 401.
-                            if role_cn == 'members':
-                                fail_action = 'entry'
+                            if role_cn == "members":
+                                fail_action = "entry"
                             else:
-                                fail_action = '401'
-                        if fail_action.lower() == 'entry':
+                                fail_action = "401"
+                        if fail_action.lower() == "entry":
                             redirect(url_for("entry"))
-                        elif fail_action.lower() == '401':
+                        elif fail_action.lower() == "401":
                             abort(401)
                 else:
                     # The user is not currently on the server
+                    postlogin = urllib.parse.quote(
+                        json.dumps({"endpoint": request.endpoint, **request.view_args})
+                    )
                     return redirect(url_for("join", postlogin=postlogin))
             else:
                 postlogin = urllib.parse.quote(
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
                 return redirect(url_for("login", postlogin=postlogin))
+
         return wrapper
+
     return decorator
 
 
@@ -132,6 +139,13 @@ def enrich_user(user):
         user.update(discord_user)
     return user
 
+def join_user_to_guild(guildid,access_token,userid):
+    r = requests.put(
+        app.config["API_BASE_URL"] + "/guilds/" + guildid + "/members/" + userid,
+        headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
+        json={'access_token':access_token}
+    )
+    return r
 
 @app.template_filter("utctime")
 def utctime(s):
@@ -152,7 +166,7 @@ def home():
 
 
 @app.route("/members")
-@has_role(role_cn='members')
+@has_role(role_cn="members")
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
@@ -160,7 +174,7 @@ def members():
 
 
 @app.route("/myprofile")
-@has_role(role_cn='members')
+@has_role(role_cn="members")
 def myprofile():
     return redirect(url_for("profile", userid=int(g.user["id"])))
 
@@ -178,7 +192,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 
 
 @app.route("/members/<int:userid>")
-@has_role(role_cn='members')
+@has_role(role_cn="members")
 @register_breadcrumb(
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
@@ -190,8 +204,8 @@ def profile(userid):
 
 @app.route("/login")
 @app.route("/login/<postlogin>")
-def login(postlogin=None):
-    scope = request.args.get("scope", "identify")
+def login(postlogin=None, scope="identify"):
+    scope = request.args.get("scope", scope)
     discord = make_session(scope=scope.split(" "))
     authorization_url, state = discord.authorization_url(
         app.config["AUTHORIZATION_BASE_URL"]
@@ -208,12 +222,16 @@ def login(postlogin=None):
 def login_callback():
     if request.values.get("error"):
         return request.values["error"]
-    discord = make_session(state=session.get("oauth2_state"))
-    token = discord.fetch_token(
+    g.discord = make_session(state=session.get("oauth2_state"))
+    token = g.discord.fetch_token(
         app.config["TOKEN_URL"],
         client_secret=app.config["OAUTH2_CLIENT_SECRET"],
         authorization_response=request.url,
     )
+    if "guilds.join" in token.scopes:
+        # Join the user to the guild since we have permission.
+        g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
+        j = join_user_to_guild(app.config['GUILD_ID'],token['access_token'],g.user['id'])
     session["oauth2_token"] = token
     if session.get("postlogin"):
         postlogin = session["postlogin"]
@@ -222,6 +240,12 @@ def login_callback():
     else:
         redirect_target = url_for("home")
     return redirect(redirect_target)
+
+
+@app.route("/join")
+@app.route("/join/<postlogin>")
+def join(postlogin=None):
+    return login(postlogin=postlogin,scope="identify guilds.join")
 
 
 @app.route("/logout")
