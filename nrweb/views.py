@@ -91,6 +91,7 @@ def has_role(role_cn="members", fail_action="auto"):
                             else:
                                 fail_action = "401"
                         if fail_action.lower() == "entry":
+                            # TODO: Add postlogin
                             redirect(url_for("entry"))
                         elif fail_action.lower() == "401":
                             abort(401)
@@ -139,13 +140,15 @@ def enrich_user(user):
         user.update(discord_user)
     return user
 
-def join_user_to_guild(guildid,access_token,userid):
+
+def join_user_to_guild(guildid, access_token, userid):
     r = requests.put(
         app.config["API_BASE_URL"] + "/guilds/" + guildid + "/members/" + userid,
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
-        json={'access_token':access_token}
+        json={"access_token": access_token},
     )
     return r
+
 
 @app.template_filter("utctime")
 def utctime(s):
@@ -228,12 +231,10 @@ def login_callback():
         client_secret=app.config["OAUTH2_CLIENT_SECRET"],
         authorization_response=request.url,
     )
-    if "guilds.join" in token.scopes:
-        # Join the user to the guild since we have permission.
-        g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
-        j = join_user_to_guild(app.config['GUILD_ID'],token['access_token'],g.user['id'])
     session["oauth2_token"] = token
-    if session.get("postlogin"):
+    if "guilds.join" in token.scopes:
+        redirect(url_for("join", postlogin=postlogin))
+    elif session.get("postlogin"):
         postlogin = session["postlogin"]
         del session["postlogin"]
         redirect_target = url_for(**postlogin)
@@ -245,7 +246,27 @@ def login_callback():
 @app.route("/join")
 @app.route("/join/<postlogin>")
 def join(postlogin=None):
-    return login(postlogin=postlogin,scope="identify guilds.join")
+    if "user" not in g:
+        return login(postlogin=postlogin, scope="identify guilds.join")
+    # Check if the user is already an accepted member.
+    elif "member" in g.user['permanent_roles']:
+        # Join the user to the guild since we have permission and the user is an accepted member.
+        j = join_user_to_guild(
+            app.config["GUILD_ID"], session["oauth2_token"]["access_token"], g.user["id"]
+        )
+        if postlogin:
+            session["postlogin"] = json.loads(urllib.parse.unquote(postlogin))
+            redirect_target = url_for(**session["postlogin"])
+        elif session.get("postlogin"):
+            redirect_target = url_for(**session["postlogin"])
+        else:
+            redirect_target = url_for("home")
+        if "postlogin" in session:
+            del session["postlogin"]
+        return redirect(redirect_target)
+    else:
+        # Perform the test
+        return render_template("join.html")
 
 
 @app.route("/logout")
