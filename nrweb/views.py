@@ -63,7 +63,7 @@ def do_before_request():
         g.guild = g.db.db.guilds.find_one({"_id": app.config["GUILD_ID"]})
 
 
-def has_role(role_cn="members", fail_action="auto"):
+def has_role(role_cn="Member", fail_action="auto"):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -169,7 +169,7 @@ def home():
 
 
 @app.route("/members")
-@has_role(role_cn="members")
+@has_role(role_cn="Member")
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
@@ -177,7 +177,7 @@ def members():
 
 
 @app.route("/myprofile")
-@has_role(role_cn="members")
+@has_role(role_cn="Member")
 def myprofile():
     return redirect(url_for("profile", userid=int(g.user["id"])))
 
@@ -195,7 +195,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 
 
 @app.route("/members/<int:userid>")
-@has_role(role_cn="members")
+@has_role(role_cn="Member")
 @register_breadcrumb(
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
@@ -249,7 +249,7 @@ def join(postlogin=None):
     if "user" not in g:
         return login(postlogin=postlogin, scope="identify guilds.join")
     # Check if the user is already an accepted member.
-    elif "member" in g.user['permanent_roles']:
+    elif "Member" in g.user['permanent_roles']:
         # Join the user to the guild since we have permission and the user is an accepted member.
         j = join_user_to_guild(
             app.config["GUILD_ID"], session["oauth2_token"]["access_token"], g.user["id"]
