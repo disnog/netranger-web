@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import redirect, url_for, render_template, request, session, g, abort
+from flask import redirect, url_for, render_template, request, session, g, abort, flash
 from flask_breadcrumbs import register_breadcrumb
 from nrweb import app
 from requests_oauthlib import OAuth2Session
@@ -233,13 +233,14 @@ def login_callback():
     )
     session["oauth2_token"] = token
     if "guilds.join" in token.scopes:
-        redirect(url_for("join", postlogin=postlogin))
+        redirect_target = (url_for("join"))
     elif session.get("postlogin"):
         postlogin = session["postlogin"]
         del session["postlogin"]
         redirect_target = url_for(**postlogin)
     else:
         redirect_target = url_for("home")
+    flash("Logged in successfully.", category="success")
     return redirect(redirect_target)
 
 
@@ -251,9 +252,17 @@ def join(postlogin=None):
     # Check if the user is already an accepted member.
     elif "Member" in g.user['permanent_roles']:
         # Join the user to the guild since we have permission and the user is an accepted member.
-        j = join_user_to_guild(
+        r = join_user_to_guild(
             app.config["GUILD_ID"], session["oauth2_token"]["access_token"], g.user["id"]
         )
+        if r.status_code == 204:
+            # User is already in the guild.
+            flash("You're already in the Discord server!","warning")
+        elif r.status_code == 201:
+            # User was joined to the guild.
+            flash("You've joined the Discord server! Please check your Discord client to find it added to your server list.",category="success")
+        else:
+            flash(f"Error: Unknown status code {r.status_code} from {r.url}",category="danger")
         if postlogin:
             session["postlogin"] = json.loads(urllib.parse.unquote(postlogin))
             redirect_target = url_for(**session["postlogin"])
@@ -275,4 +284,5 @@ def logout():
         return request.values["error"]
     session.clear()
     redirect_target = url_for("home")
+    flash("Logged out successfully.",category="info")
     return redirect(redirect_target)
