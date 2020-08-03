@@ -200,7 +200,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
 def profile(userid):
-    user = g.db.db.users.find_one({"_id": request.view_args["userid"]})
+    user = g.db.db.users.find_one({"_id": userid})
     user = enrich_user(user)
     return render_template("profile.html", user=user)
 
@@ -224,7 +224,8 @@ def login(postlogin=None, scope="identify"):
 @app.route("/login_callback")
 def login_callback():
     if request.values.get("error"):
-        return request.values["error"]
+        flash("You need to grant permissions to authenticate.",category="danger")
+        return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
     token = g.discord.fetch_token(
         app.config["TOKEN_URL"],
