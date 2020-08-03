@@ -16,7 +16,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import redirect, url_for, render_template, request, session, g, abort
+from flask import (
+    redirect,
+    url_for,
+    render_template,
+    request,
+    session,
+    g,
+    abort,
+    flash,
+    Markup,
+)
 from flask_breadcrumbs import register_breadcrumb
 from nrweb import app
 from requests_oauthlib import OAuth2Session
@@ -63,7 +73,7 @@ def do_before_request():
         g.guild = g.db.db.guilds.find_one({"_id": app.config["GUILD_ID"]})
 
 
-def has_role(role_cn="members", fail_action="auto"):
+def has_role(role_cn="Member", fail_action="auto"):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -91,6 +101,7 @@ def has_role(role_cn="members", fail_action="auto"):
                             else:
                                 fail_action = "401"
                         if fail_action.lower() == "entry":
+                            # TODO: Add postlogin
                             redirect(url_for("entry"))
                         elif fail_action.lower() == "401":
                             abort(401)
@@ -139,13 +150,15 @@ def enrich_user(user):
         user.update(discord_user)
     return user
 
-def join_user_to_guild(guildid,access_token,userid):
+
+def join_user_to_guild(guildid, access_token, userid):
     r = requests.put(
         app.config["API_BASE_URL"] + "/guilds/" + guildid + "/members/" + userid,
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
-        json={'access_token':access_token}
+        json={"access_token": access_token},
     )
     return r
+
 
 @app.template_filter("utctime")
 def utctime(s):
@@ -166,7 +179,7 @@ def home():
 
 
 @app.route("/members")
-@has_role(role_cn="members")
+@has_role(role_cn="Member")
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
@@ -174,7 +187,7 @@ def members():
 
 
 @app.route("/myprofile")
-@has_role(role_cn="members")
+@has_role(role_cn="Member")
 def myprofile():
     return redirect(url_for("profile", userid=int(g.user["id"])))
 
@@ -192,12 +205,12 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 
 
 @app.route("/members/<int:userid>")
-@has_role(role_cn="members")
+@has_role(role_cn="Member")
 @register_breadcrumb(
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
 def profile(userid):
-    user = g.db.db.users.find_one({"_id": request.view_args["userid"]})
+    user = g.db.db.users.find_one({"_id": userid})
     user = enrich_user(user)
     return render_template("profile.html", user=user)
 
@@ -221,31 +234,74 @@ def login(postlogin=None, scope="identify"):
 @app.route("/login_callback")
 def login_callback():
     if request.values.get("error"):
-        return request.values["error"]
+        flash(
+            Markup(
+                "You need to grant permissions to authenticate. <a href='{loginurl}'>Try again</a>?".format(
+                    loginurl=url_for("login")
+                )
+            ),
+            category="danger",
+        )
+        return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
     token = g.discord.fetch_token(
         app.config["TOKEN_URL"],
         client_secret=app.config["OAUTH2_CLIENT_SECRET"],
         authorization_response=request.url,
     )
-    if "guilds.join" in token.scopes:
-        # Join the user to the guild since we have permission.
-        g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
-        j = join_user_to_guild(app.config['GUILD_ID'],token['access_token'],g.user['id'])
     session["oauth2_token"] = token
-    if session.get("postlogin"):
+    if "guilds.join" in token.scopes:
+        redirect_target = url_for("join")
+    elif session.get("postlogin"):
         postlogin = session["postlogin"]
         del session["postlogin"]
         redirect_target = url_for(**postlogin)
     else:
         redirect_target = url_for("home")
+    flash("Logged in successfully.", category="success")
     return redirect(redirect_target)
 
 
 @app.route("/join")
 @app.route("/join/<postlogin>")
 def join(postlogin=None):
-    return login(postlogin=postlogin,scope="identify guilds.join")
+    if "user" not in g:
+        return login(postlogin=postlogin, scope="identify guilds.join")
+    # Check if the user is already an accepted member.
+    elif "Member" in g.user["permanent_roles"]:
+        # Join the user to the guild since we have permission and the user is an accepted member.
+        r = join_user_to_guild(
+            app.config["GUILD_ID"],
+            session["oauth2_token"]["access_token"],
+            g.user["id"],
+        )
+        if r.status_code == 204:
+            # User is already in the guild.
+            flash("You're already in the Discord server!", "warning")
+        elif r.status_code == 201:
+            # User was joined to the guild.
+            flash(
+                "You've joined the Discord server! Please check your Discord client to find it added to your server list.",
+                category="success",
+            )
+        else:
+            flash(
+                f"Error: Unknown status code {r.status_code} from {r.url}",
+                category="danger",
+            )
+        if postlogin:
+            session["postlogin"] = json.loads(urllib.parse.unquote(postlogin))
+            redirect_target = url_for(**session["postlogin"])
+        elif session.get("postlogin"):
+            redirect_target = url_for(**session["postlogin"])
+        else:
+            redirect_target = url_for("home")
+        if "postlogin" in session:
+            del session["postlogin"]
+        return redirect(redirect_target)
+    else:
+        # Perform the test
+        return render_template("join.html")
 
 
 @app.route("/logout")
@@ -254,4 +310,5 @@ def logout():
         return request.values["error"]
     session.clear()
     redirect_target = url_for("home")
+    flash("Logged out successfully.", category="info")
     return redirect(redirect_target)
