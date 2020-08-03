@@ -71,7 +71,6 @@ def do_before_request():
             )
         )
         g.guild = nrdb.get_guild(app.config["GUILD_ID"])
-        print(g.guild)
 
 
 def has_role(role_cn="Member", fail_action="auto"):
