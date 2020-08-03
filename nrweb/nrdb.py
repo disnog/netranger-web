@@ -24,3 +24,7 @@ def get_guild(guild_id):
 def get_role_by_common_name(guild_id, role_cn):
     r = g.db.db.guilds.find_one({"_id": guild_id, "known_roles.significance": role_cn})
     return r["known_roles"][0]
+
+def get_channel_by_common_name(guild_id, channel_cn):
+    r = g.db.db.guilds.find_one({"_id": guild_id, "known_channels.significance": channel_cn})
+    return r["known_channels"][0]
