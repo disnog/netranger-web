@@ -28,7 +28,7 @@ from flask import (
     Markup,
 )
 from flask_breadcrumbs import register_breadcrumb
-from nrweb import app
+from nrweb import app, nrdb
 from requests_oauthlib import OAuth2Session
 import urllib.parse
 import json
@@ -70,7 +70,8 @@ def do_before_request():
                 {"_id": int(g.user["id"])}, {"permanent_roles": True}
             )
         )
-        g.guild = g.db.db.guilds.find_one({"_id": app.config["GUILD_ID"]})
+        g.guild = nrdb.get_guild(app.config["GUILD_ID"])
+        print(g.guild)
 
 
 def has_role(role_cn="Member", fail_action="auto"):
