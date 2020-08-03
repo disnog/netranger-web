@@ -16,7 +16,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import redirect, url_for, render_template, request, session, g, abort, flash
+from flask import (
+    redirect,
+    url_for,
+    render_template,
+    request,
+    session,
+    g,
+    abort,
+    flash,
+    Markup,
+)
 from flask_breadcrumbs import register_breadcrumb
 from nrweb import app
 from requests_oauthlib import OAuth2Session
@@ -224,7 +234,14 @@ def login(postlogin=None, scope="identify"):
 @app.route("/login_callback")
 def login_callback():
     if request.values.get("error"):
-        flash("You need to grant permissions to authenticate.",category="danger")
+        flash(
+            Markup(
+                "You need to grant permissions to authenticate. <a href='{loginurl}'>Try again</a>?".format(
+                    loginurl=url_for("login")
+                )
+            ),
+            category="danger",
+        )
         return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
     token = g.discord.fetch_token(
@@ -234,7 +251,7 @@ def login_callback():
     )
     session["oauth2_token"] = token
     if "guilds.join" in token.scopes:
-        redirect_target = (url_for("join"))
+        redirect_target = url_for("join")
     elif session.get("postlogin"):
         postlogin = session["postlogin"]
         del session["postlogin"]
@@ -251,19 +268,27 @@ def join(postlogin=None):
     if "user" not in g:
         return login(postlogin=postlogin, scope="identify guilds.join")
     # Check if the user is already an accepted member.
-    elif "Member" in g.user['permanent_roles']:
+    elif "Member" in g.user["permanent_roles"]:
         # Join the user to the guild since we have permission and the user is an accepted member.
         r = join_user_to_guild(
-            app.config["GUILD_ID"], session["oauth2_token"]["access_token"], g.user["id"]
+            app.config["GUILD_ID"],
+            session["oauth2_token"]["access_token"],
+            g.user["id"],
         )
         if r.status_code == 204:
             # User is already in the guild.
-            flash("You're already in the Discord server!","warning")
+            flash("You're already in the Discord server!", "warning")
         elif r.status_code == 201:
             # User was joined to the guild.
-            flash("You've joined the Discord server! Please check your Discord client to find it added to your server list.",category="success")
+            flash(
+                "You've joined the Discord server! Please check your Discord client to find it added to your server list.",
+                category="success",
+            )
         else:
-            flash(f"Error: Unknown status code {r.status_code} from {r.url}",category="danger")
+            flash(
+                f"Error: Unknown status code {r.status_code} from {r.url}",
+                category="danger",
+            )
         if postlogin:
             session["postlogin"] = json.loads(urllib.parse.unquote(postlogin))
             redirect_target = url_for(**session["postlogin"])
@@ -285,5 +310,5 @@ def logout():
         return request.values["error"]
     session.clear()
     redirect_target = url_for("home")
-    flash("Logged out successfully.",category="info")
+    flash("Logged out successfully.", category="info")
     return redirect(redirect_target)
