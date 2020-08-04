@@ -21,10 +21,37 @@ def get_guild(guild_id):
     return g.db.db.guilds.find_one({"_id": guild_id})
 
 
-def get_role_by_common_name(guild_id, role_cn):
-    r = g.db.db.guilds.find_one({"_id": guild_id, "known_roles.significance": role_cn})
+def get_role_by_significance(guild_id, role_significance):
+    q = {"_id": guild_id, "known_roles.significance": role_significance}
+    r = g.db.db.guilds.find_one(q, {"known_roles.$": 1})
     return r["known_roles"][0]
 
-def get_channel_by_common_name(guild_id, channel_cn):
-    r = g.db.db.guilds.find_one({"_id": guild_id, "known_channels.significance": channel_cn})
+
+def get_channel_by_significance(guild_id, channel_significance):
+    q = {"_id": guild_id, "known_channels.significance": channel_significance}
+    r = g.db.db.guilds.find_one(q, {"known_channels.$": 1})
     return r["known_channels"][0]
+
+
+def add_channel_significance(channel_id, guild_id, channel_significance):
+    q = {"_id": id, "guild_id": guild_id}
+    update = {
+        "$addToSet": {
+            "known_channels.id": channel_id,
+            f"known_channels.{channel_id}.significance": channel_significance,
+        }
+    }
+    r = g.db.db.guilds.updateOne(q, update, {"upsert": True})
+    return r
+
+
+def add_role_significance(role_id, guild_id, role_significance):
+    q = {"_id": id, "guild_id": guild_id}
+    update = {
+        "$addToSet": {
+            "known_roles.id": role_id,
+            f"known_roles.{role_id}.significance": role_significance,
+        }
+    }
+    r = g.db.db.guilds.updateOne(q, update, {"upsert": True})
+    return r

@@ -73,7 +73,7 @@ def do_before_request():
         g.guild = nrdb.get_guild(app.config["GUILD_ID"])
 
 
-def has_role(role_cn="Member", fail_action="auto"):
+def has_role(role_significance="Member", fail_action="auto"):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -85,7 +85,7 @@ def has_role(role_cn="Member", fail_action="auto"):
                     members_roleid = next(
                         x
                         for x in g.guild["known_roles"]
-                        if x["significance"] == role_cn
+                        if x["significance"] == role_significance
                     )["id"]
                     if members_roleid in g.user["roles"]:
                         # The user has the role
@@ -94,9 +94,9 @@ def has_role(role_cn="Member", fail_action="auto"):
                         if fail_action.lower() not in ["auto", "401", "entry"]:
                             fail_action = "auto"
                         if fail_action.lower() == "auto":
-                            # Set unauthorized action to entry if the role common name is members.
+                            # Set unauthorized action to entry if the role significance is members.
                             # Otherwise, return 401.
-                            if role_cn == "members":
+                            if role_significance == "members":
                                 fail_action = "entry"
                             else:
                                 fail_action = "401"
@@ -179,7 +179,7 @@ def home():
 
 
 @app.route("/members")
-@has_role(role_cn="Member")
+@has_role(role_significance="Member")
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
@@ -187,7 +187,7 @@ def members():
 
 
 @app.route("/myprofile")
-@has_role(role_cn="Member")
+@has_role(role_significance="Member")
 def myprofile():
     return redirect(url_for("profile", userid=int(g.user["id"])))
 
@@ -205,7 +205,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 
 
 @app.route("/members/<int:userid>")
-@has_role(role_cn="Member")
+@has_role(role_significance="Member")
 @register_breadcrumb(
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
