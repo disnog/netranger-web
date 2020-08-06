@@ -91,18 +91,18 @@ def has_role(role_significance="Member", fail_action="auto"):
                         # The user has the role
                         return f(*args, **kwargs)
                     else:
-                        if fail_action.lower() not in ["auto", "401", "entry"]:
+                        if fail_action.lower() not in ["auto", "401", "join"]:
                             fail_action = "auto"
                         if fail_action.lower() == "auto":
-                            # Set unauthorized action to entry if the role significance is members.
+                            # Set unauthorized action to join if the role significance is members.
                             # Otherwise, return 401.
                             if role_significance == "members":
-                                fail_action = "entry"
+                                fail_action = "join"
                             else:
                                 fail_action = "401"
-                        if fail_action.lower() == "entry":
+                        if fail_action.lower() == "join":
                             # TODO: Add postlogin
-                            redirect(url_for("entry"))
+                            redirect(url_for("join"))
                         elif fail_action.lower() == "401":
                             abort(401)
                 else:
