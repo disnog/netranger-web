@@ -85,7 +85,7 @@ def has_role(role_significance="Member", fail_action="auto"):
                     members_roleid = next(
                         x
                         for x in g.guild["known_roles"]
-                        if x["significance"] == role_significance
+                        if role_significance in x["significance"]
                     )["id"]
                     if members_roleid in g.user["roles"]:
                         # The user has the role
@@ -159,6 +159,24 @@ def join_user_to_guild(guildid, access_token, userid):
     )
     return r
 
+def send_to_known_channel(significance,json_payload):
+    channel=nrdb.get_channel_by_significance(app.config["GUILD_ID"],significance)
+    r = requests.post(
+        app.config["API_BASE_URL"] + "/channels/" + channel["id"] + "/webhooks",
+        headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
+        json={"name": "https://neteng.xyz"},
+    )
+    r.raise_for_status()
+    webhook=r.json()
+    r = requests.post(
+        app.config["API_BASE_URL"] + "/webhooks/" + webhook["id"] + "/" + webhook["token"],
+        json=json_payload
+    )
+    r.raise_for_status()
+    r = requests.delete(
+        app.config["API_BASE_URL"] + "/webhooks/" + webhook["id"] + "/" + webhook["token"]
+    )
+    r.raise_for_status()
 
 @app.template_filter("utctime")
 def utctime(s):
@@ -280,6 +298,10 @@ def join(postlogin=None):
             flash("You're already in the Discord server!", "warning")
         elif r.status_code == 201:
             # User was joined to the guild.
+            user = nrdb.get_user(g.user['id'])
+            member_number = user["member_number"]
+            json_payload = {"content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"}
+            send_to_known_channel("greeting",json_payload)
             flash(
                 "You've joined the Discord server! Please check your Discord client to find it added to your server list.",
                 category="success",
