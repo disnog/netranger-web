@@ -1,19 +1,50 @@
 {% extends "base.html" %}
 {% block pagetitle %}Member Profile{% endblock %}
 {% block content %}
-<div class="card-columns">
-    <div class="card mb-3 text-center">
+<div class="card mb-3 text-center">
+    <div class="card-img-top text-center">
         <img src="https://cdn.discordapp.com/{% if user['avatar'] %}avatars/{{user['id']}}/{{user['avatar']}}{% else %}embed/avatars/{{ user['discriminator'] | int %5 }}{% endif %}.png"
-             class="card-img-top rounded-circle p-4" alt="" style="max-width: 15rem;">
-        <div class="card-body text-center h4">
-            {{user['name']}}#{{user['discriminator']}}
-            {% if user['nick'] %}<div class="h5">
-                {{user['nick']}}
-            </div>
-            {% endif %}
+             class="card-img-top rounded-circle p-4" alt="" style="max-width: 12rem;">
+    </div>
+    <div class="card-body text-center h4">
+        {{user['name']}}#{{user['discriminator']}}
+        {% if user['nick'] %}
+        <div class="h5">
+            {{user['nick']}}
         </div>
-        <div class="card-body">
-            {{user}}
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="card-columns text-left">
+            <div class="card">
+                <h5 class="card-header">
+                    Member Info
+                </h5>
+                <ul class="list-group list-group-flush">
+                    <table class="table table-borderless">
+                        <tbody>
+                        <tr>
+                            <th scope="row">Member #</th>
+                            <td>{{user.member_number}}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">First Joined</th>
+                            <td>{{user.first_joined_at}}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </ul>
+            </div>
+            <div class="card">
+                <h5 class="card-header">
+                    Persistent Roles
+                </h5>
+                <ul class="list-group list-group-flush">
+                    {% for role in user.permanent_roles %}
+                    <li class="list-group-item">{{role}}</li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
     </div>
 </div>
