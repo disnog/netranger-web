@@ -76,7 +76,7 @@ def do_before_request():
 def has_role(role_significance="Member", fail_action="auto"):
     def decorator(f):
         @wraps(f)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, fail_action=fail_action, **kwargs):
             # Check if user is logged in
             if "user" in g:
                 g.user = enrich_member(g.user)
@@ -96,13 +96,13 @@ def has_role(role_significance="Member", fail_action="auto"):
                         if fail_action.lower() == "auto":
                             # Set unauthorized action to join if the role significance is members.
                             # Otherwise, return 401.
-                            if role_significance == "members":
+                            if role_significance == "Member":
                                 fail_action = "join"
                             else:
                                 fail_action = "401"
                         if fail_action.lower() == "join":
                             # TODO: Add postlogin
-                            redirect(url_for("join"))
+                            return redirect(url_for("join"))
                         elif fail_action.lower() == "401":
                             abort(401)
                 else:
@@ -197,7 +197,7 @@ def home():
 
 
 @app.route("/members")
-@has_role(role_significance="Member")
+@has_role(role_significance="Member",fail_action="join")
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
@@ -223,7 +223,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 
 
 @app.route("/members/<int:userid>")
-@has_role(role_significance="Member")
+@has_role(role_significance="Member",fail_action="join")
 @register_breadcrumb(
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
