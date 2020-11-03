@@ -178,6 +178,14 @@ def send_to_known_channel(significance,json_payload):
     )
     r.raise_for_status()
 
+def assign_role(significance,member_id):
+    role=nrdb.get_role_by_significance(app.config["GUILD_ID"],significance)
+    r = requests.put(
+        app.config["API_BASE_URL"] + "/guilds/" + app.config["GUILD_ID"] + "/members/" + member_id + "/roles/" + role['id'],
+        headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
+    )
+    r.raise_for_status()
+
 @app.template_filter("utctime")
 def utctime(s):
     return datetime.utcfromtimestamp(s).strftime("%Y-%b-%d %H:%M:%S UTC")
@@ -296,6 +304,12 @@ def join(postlogin=None):
         if r.status_code == 204:
             # User is already in the guild.
             flash("You're already in the Discord server!", "warning")
+            # TODO: Only do this if they're not yet in Members
+            assign_role("Member",g.user['id'])
+            flash(
+                "You've been added as a full Member on the Discord server! Please check your Discord client to find your new channels.",
+                category="success",
+            )
         elif r.status_code == 201:
             # User was joined to the guild.
             user = nrdb.get_user(g.user['id'])
