@@ -291,6 +291,28 @@ def login_callback():
 @app.route("/join")
 @app.route("/join/<postlogin>")
 def join(postlogin=None):
+    def set_userclass_role():
+        # TODO: Only do this if they're not yet in Members
+        if "Member" in g.user["permanent_roles"]:
+            userclass="Member"
+            announcechannel="greeting"
+        elif "periphery" in g.user["permanent_roles"]:
+            userclass="periphery"
+            announcechannel="periphery_greeting"
+        assign_role(userclass, g.user['id'])
+
+        flash(
+            "Your userclass role has been synchronized on Discord. Please check your Discord client to find your new channels.",
+            category="success",
+        )
+
+        user = nrdb.get_user(g.user['id'])
+        member_number = user["member_number"]
+
+        json_payload = {
+            "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"}
+        send_to_known_channel(announcechannel, json_payload)
+
     if "user" not in g:
         return login(postlogin=postlogin, scope="identify guilds.join")
     # Check if the user is already an accepted member.
@@ -303,19 +325,10 @@ def join(postlogin=None):
         )
         if r.status_code == 204:
             # User is already in the guild.
-            flash("You're already in the Discord server!", "warning")
-            # TODO: Only do this if they're not yet in Members
-            assign_role("Member",g.user['id'])
-            flash(
-                "You've been added as a full Member on the Discord server! Please check your Discord client to find your new channels.",
-                category="success",
-            )
+            set_userclass_role()
         elif r.status_code == 201:
             # User was joined to the guild.
-            user = nrdb.get_user(g.user['id'])
-            member_number = user["member_number"]
-            json_payload = {"content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"}
-            send_to_known_channel("greeting",json_payload)
+            set_userclass_role()
             flash(
                 "You've joined the Discord server! Please check your Discord client to find it added to your server list.",
                 category="success",
