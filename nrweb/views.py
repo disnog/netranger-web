@@ -315,8 +315,8 @@ def join(postlogin=None):
 
     if "user" not in g:
         return login(postlogin=postlogin, scope="identify guilds.join")
-    # Check if the user is already an accepted member.
-    elif "Member" in g.user["permanent_roles"]:
+    # Check if the user is already aa Member or periphery.
+    elif {"Member","periphery"}.intersection(g.user["permanent_roles"]):
         # Join the user to the guild since we have permission and the user is an accepted member.
         r = join_user_to_guild(
             app.config["GUILD_ID"],
@@ -349,7 +349,7 @@ def join(postlogin=None):
             del session["postlogin"]
         return redirect(redirect_target)
     else:
-        # Perform the test
+        # Ask where they want to join
         return render_template("join.html")
 
 
