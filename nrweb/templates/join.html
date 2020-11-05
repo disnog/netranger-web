@@ -3,11 +3,15 @@
 {% block content %}
 <script>
     $(document).ready(function () {
+        $("#periphery-info").hide();
+        $("#fullmember-info").hide();
         $('#userclass').on('change', function () {
             if (this.value == 'Member') {
-                $("#blah").show();
-            } else {
-                $("#blah").hide();
+                $("#fullmember-info").show();
+                $("#periphery-info").hide();
+            } else if (this.value == "periphery") {
+                $("#periphery-info").show();
+                $("#fullmember-info").hide();
             }
         });
     });
@@ -41,6 +45,7 @@
                     <option selected disabled></option>
                     <option value="Member">Enterprise networking, enterprise wifi, and VOIP</option>
                     <option value="periphery">Home routers, wifi, servers, computers, and peripherals</option>
+                    <option value="Member">Network automation and DevOps</option>
                     <option value="periphery">General business or enterprise information technology, server
                         administration, or coding
                     </option>
@@ -48,48 +53,48 @@
                     <option value="Member">I'm a student studying for enterprise or service provider networking</option>
                 </select>
             </div>
-            <div class="card">
+            <div class="card" id="fullmember-info">
                 <div class="card-body">
                     <h5 class="card-title">User Classification: Full Membership</h5>
                     <p class="card-text">Based on your intended use of the server, we think you're best suited as a full
                         member. You'll have access to channels with topics like:</p>
                     <div class="card-columns">
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Service Provider Networking</p>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Enterprise Routing and Switching</p>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Network Automation</p>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Network Security</p>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Rants</p>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Jobs</p>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Education</p>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card  text-white bg-dark">
                             <div class="card-body">
                                 <p class="card-text">Home Labs</p>
                             </div>
@@ -103,14 +108,36 @@
                 </div>
                 <div class="card-body">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="" id="general-rules-agreement">
-                        <label class="form-check-label" for="general-rules-agreement">
+                        <input class="form-check-input" type="checkbox" value="" id="member-rules-agreement">
+                        <label class="form-check-label" for="member-rules-agreement">
                             I agree to the additional full member rules.
                         </label>
                     </div>
                 </div>
             </div>
-            <div class="">
+            <div class="card" id="periphery-info">
+                <div class="card-body">
+                    <h5 class="card-title">User Classification: Periphery Membership</h5>
+                    <p class="card-text">Based on your intended use of the server, we think you're best suited as a
+                        periphery
+                        member. You'll have access to channels with topics like:</p>
+                    <div class="card-columns">
+                        <div class="card  text-white bg-dark">
+                            <div class="card-body">
+                                <p class="card-text">General IT, Non-Network Coding, and Server Administration</p>
+                            </div>
+                        </div>
+                        <div class="card  text-white bg-dark">
+                            <div class="card-body">
+                                <p class="card-text">Home Networking, Residential Internet and WiFi</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="card-text">If this doesn't seem right and you are or are aspiring to become a network
+                        engineering professional, please edit your choice above.</p>
+                </div>
+            </div>
+            <div class="text-center">
                 <button type="submit" class="btn btn-primary">Join</button>
             </div>
         </div>
