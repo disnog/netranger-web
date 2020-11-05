@@ -3,13 +3,20 @@
 {% block content %}
 <script>
     $(document).ready(function () {
-        $("#periphery-info").hide();
-        $("#fullmember-info").hide();
+        if ($("#userclass")[0].value != 'periphery') {
+            $("#periphery-info").hide();
+        }
+        if ($("#userclass")[0].value != 'Member') {
+            $("#fullmember-info").hide();
+            $("#fullmember-info").find('input').prop('required',false)
+        }
         $('#userclass').on('change', function () {
             if (this.value == 'Member') {
                 $("#periphery-info").hide("slow");
+                $("#fullmember-info").find('input').prop('required',true)
                 $("#fullmember-info").show("slow");
             } else if (this.value == "periphery") {
+                $("#fullmember-info").find('input').prop('required',false)
                 $("#fullmember-info").hide("slow");
                 $("#periphery-info").show("slow");
             }
@@ -26,7 +33,7 @@
         </div>
         <div class="card-body">
             <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="" id="general-rules-agreement">
+                <input class="form-check-input" type="checkbox" value="" id="general-rules-agreement" required>
                 <label class="form-check-label" for="general-rules-agreement">
                     I agree to the above rules.
                 </label>
@@ -41,7 +48,7 @@
 
             <div class="form-group">
                 <label for="userclass">What would you like to talk about on the server?</label>
-                <select class="form-control" id="userclass">
+                <select class="form-control" id="userclass" required>
                     <option selected disabled></option>
                     <option value="Member">Enterprise networking, enterprise wifi, and VOIP</option>
                     <option value="periphery">Home routers, wifi, servers, computers, and peripherals</option>
@@ -108,7 +115,7 @@
                 </div>
                 <div class="card-body">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="" id="member-rules-agreement">
+                        <input class="form-check-input" type="checkbox" value="" id="member-rules-agreement" required>
                         <label class="form-check-label" for="member-rules-agreement">
                             I agree to the additional full member rules.
                         </label>
