@@ -7,11 +7,11 @@
         $("#fullmember-info").hide();
         $('#userclass').on('change', function () {
             if (this.value == 'Member') {
-                $("#fullmember-info").show();
-                $("#periphery-info").hide();
+                $("#periphery-info").hide("slow");
+                $("#fullmember-info").show("slow");
             } else if (this.value == "periphery") {
-                $("#periphery-info").show();
-                $("#fullmember-info").hide();
+                $("#fullmember-info").hide("slow");
+                $("#periphery-info").show("slow");
             }
         });
     });
