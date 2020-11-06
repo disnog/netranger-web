@@ -69,11 +69,13 @@ def do_before_request():
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
-        g.user.update(
-            g.db.db.users.find_one(
-                {"_id": int(g.user["id"])}, {"permanent_roles": True, "member_number": True, "first_joined_at": True}
-            )
+        user_db_info = g.db.db.users.find_one(
+            {"_id": int(g.user["id"])}, {"permanent_roles": True, "member_number": True, "first_joined_at": True}
         )
+        if user_db_info:
+            g.user.update(user_db_info)
+        else:
+            g.user.update({"permanent_roles": list()})
         g.guild = nrdb.get_guild(app.config["GUILD_ID"])
 
 
@@ -127,6 +129,8 @@ def has_role(role_significance="Member", fail_action="auto"):
 
 
 def enrich_member(user):
+    if "_id" not in user.keys() and "id" in user.keys():
+        user['_id'] = user['id']
     r = requests.get(
         app.config["API_BASE_URL"]
         + "/guilds/"
@@ -419,8 +423,8 @@ def join(postlogin=None):
             form.accept_member_rules.validators = []
         if form.validate_on_submit():
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
-            if form.userclass.data in ['Member','periphery']:
-                nrdb.upsert_member(g.user,[form.userclass.data])
+            if form.userclass.data in ['Member', 'periphery']:
+                nrdb.upsert_member(g.user, [form.userclass.data])
                 return redirect(url_for("join", postlogin=postlogin))
         # Ask where they want to join
         return render_template("join.html", form=form)
