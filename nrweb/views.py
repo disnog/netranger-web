@@ -28,6 +28,10 @@ from flask import (
     Markup,
 )
 from flask_breadcrumbs import register_breadcrumb
+from flask_wtf import FlaskForm
+from wtforms import SelectField
+from wtforms import BooleanField
+from wtforms.validators import DataRequired
 from nrweb import app, nrdb
 from requests_oauthlib import OAuth2Session
 import urllib.parse
@@ -159,32 +163,49 @@ def join_user_to_guild(guildid, access_token, userid):
     )
     return r
 
-def send_to_known_channel(significance,json_payload):
-    channel=nrdb.get_channel_by_significance(app.config["GUILD_ID"],significance)
+
+def send_to_known_channel(significance, json_payload):
+    channel = nrdb.get_channel_by_significance(app.config["GUILD_ID"], significance)
     r = requests.post(
         app.config["API_BASE_URL"] + "/channels/" + channel["id"] + "/webhooks",
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
         json={"name": "https://neteng.xyz"},
     )
     r.raise_for_status()
-    webhook=r.json()
+    webhook = r.json()
     r = requests.post(
-        app.config["API_BASE_URL"] + "/webhooks/" + webhook["id"] + "/" + webhook["token"],
-        json=json_payload
+        app.config["API_BASE_URL"]
+        + "/webhooks/"
+        + webhook["id"]
+        + "/"
+        + webhook["token"],
+        json=json_payload,
     )
     r.raise_for_status()
     r = requests.delete(
-        app.config["API_BASE_URL"] + "/webhooks/" + webhook["id"] + "/" + webhook["token"]
+        app.config["API_BASE_URL"]
+        + "/webhooks/"
+        + webhook["id"]
+        + "/"
+        + webhook["token"]
     )
     r.raise_for_status()
 
-def assign_role(significance,member_id):
-    role=nrdb.get_role_by_significance(app.config["GUILD_ID"],significance)
+
+def assign_role(significance, member_id):
+    role = nrdb.get_role_by_significance(app.config["GUILD_ID"], significance)
     r = requests.put(
-        app.config["API_BASE_URL"] + "/guilds/" + app.config["GUILD_ID"] + "/members/" + member_id + "/roles/" + role['id'],
+        app.config["API_BASE_URL"]
+        + "/guilds/"
+        + app.config["GUILD_ID"]
+        + "/members/"
+        + member_id
+        + "/roles/"
+        + role["id"],
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
     )
     r.raise_for_status()
+
 
 @app.template_filter("utctime")
 def utctime(s):
@@ -205,7 +226,7 @@ def home():
 
 
 @app.route("/members")
-@has_role(role_significance="Member",fail_action="join")
+@has_role(role_significance="Member", fail_action="join")
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
@@ -231,7 +252,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 
 
 @app.route("/members/<int:userid>")
-@has_role(role_significance="Member",fail_action="join")
+@has_role(role_significance="Member", fail_action="join")
 @register_breadcrumb(
     app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
@@ -288,35 +309,71 @@ def login_callback():
     return redirect(redirect_target)
 
 
-@app.route("/join")
-@app.route("/join/<postlogin>")
+@app.route("/join", methods=["GET", "POST"])
+@app.route("/join/<postlogin>", methods=["GET", "POST"])
+@register_breadcrumb(app, ".home", "Join")
 def join(postlogin=None):
+    class JoinForm(FlaskForm):
+
+        accept_general_rules = BooleanField(
+            "I have read and accept the general rules.",
+            validators=[DataRequired()],
+            id="accept-general-rules",
+        )
+        accept_member_rules = BooleanField(
+            "I have read and accept the additional full membership rules.",
+            validators=[DataRequired()],
+            id="accept-member-rules",
+        )
+        choices = [
+            ("", ""),
+            ("Member", "Enterprise networking, enterprise wifi, and VOIP"),
+            ("periphery", "Home routers, wifi, servers, computers, and peripherals"),
+            ("Member", "Network automation and DevOps"),
+            (
+                "periphery",
+                "General business or enterprise information technology, server administration, or coding",
+            ),
+            ("Member", "Service provider networking, BGP, and MPLS"),
+            (
+                "Member",
+                "I'm a student studying for enterprise or service provider networking",
+            ),
+        ]
+        userclass = SelectField(
+            "What would you like to talk about on the server?",
+            choices=choices,
+            validators=[DataRequired()],
+            id="userclass",
+        )
+
     def set_userclass_role():
         # TODO: Only do this if they're not yet in Members
         if "Member" in g.user["permanent_roles"]:
-            userclass="Member"
-            announcechannel="greeting"
+            userclass = "Member"
+            announcechannel = "greeting"
         elif "periphery" in g.user["permanent_roles"]:
-            userclass="periphery"
-            announcechannel="periphery_greeting"
-        assign_role(userclass, g.user['id'])
+            userclass = "periphery"
+            announcechannel = "periphery_greeting"
+        assign_role(userclass, g.user["id"])
 
         flash(
             "Your userclass role has been synchronized on Discord. Please check your Discord client to find your new channels.",
             category="success",
         )
 
-        user = nrdb.get_user(g.user['id'])
+        user = nrdb.get_user(g.user["id"])
         member_number = user["member_number"]
 
         json_payload = {
-            "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"}
+            "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"
+        }
         send_to_known_channel(announcechannel, json_payload)
 
     if "user" not in g:
         return login(postlogin=postlogin, scope="identify guilds.join")
-    # Check if the user is already aa Member or periphery.
-    elif {"Member","periphery"}.intersection(g.user["permanent_roles"]):
+    # Check if the user is already a Member or periphery.
+    elif {"Member", "periphery"}.intersection(g.user["permanent_roles"]):
         # Join the user to the guild since we have permission and the user is an accepted member.
         r = join_user_to_guild(
             app.config["GUILD_ID"],
@@ -349,8 +406,15 @@ def join(postlogin=None):
             del session["postlogin"]
         return redirect(redirect_target)
     else:
+        form = JoinForm()
+        if form.userclass.data != 'Member':
+            form.accept_member_rules.validators=[]
+        if form.validate_on_submit():
+            # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
+            print("Passed validation.")
+        print(request.method + " " + json.dumps(request.form))
         # Ask where they want to join
-        return render_template("join.html")
+        return render_template("join.html", form=form)
 
 
 @app.route("/logout")
