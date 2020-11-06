@@ -31,7 +31,7 @@ from flask_breadcrumbs import register_breadcrumb
 from flask_wtf import FlaskForm
 from wtforms import SelectField
 from wtforms import BooleanField
-from wtforms.validators import DataRequired
+from wtforms.validators import InputRequired
 from nrweb import app, nrdb
 from requests_oauthlib import OAuth2Session
 import urllib.parse
@@ -71,7 +71,7 @@ def do_before_request():
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
         g.user.update(
             g.db.db.users.find_one(
-                {"_id": int(g.user["id"])}, {"permanent_roles": True}
+                {"_id": int(g.user["id"])}, {"permanent_roles": True, "member_number": True, "first_joined_at": True}
             )
         )
         g.guild = nrdb.get_guild(app.config["GUILD_ID"])
@@ -325,12 +325,12 @@ def join(postlogin=None):
 
         accept_general_rules = BooleanField(
             "I have read and accept the general rules.",
-            validators=[DataRequired()],
+            validators=[InputRequired()],
             id="accept-general-rules",
         )
         accept_member_rules = BooleanField(
             "I have read and accept the additional full membership rules.",
-            validators=[DataRequired()],
+            validators=[InputRequired()],
             id="accept-member-rules",
         )
         choices = [
@@ -351,7 +351,7 @@ def join(postlogin=None):
         userclass = SelectField(
             "What would you like to talk about on the server?",
             choices=choices,
-            validators=[DataRequired()],
+            validators=[InputRequired()],
             id="userclass",
         )
 
@@ -419,8 +419,9 @@ def join(postlogin=None):
             form.accept_member_rules.validators = []
         if form.validate_on_submit():
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
-            print("Passed validation.")
-        print(request.method + " " + json.dumps(request.form))
+            if form.userclass.data in ['Member','periphery']:
+                nrdb.upsert_member(g.user,[form.userclass.data])
+                return redirect(url_for("join", postlogin=postlogin))
         # Ask where they want to join
         return render_template("join.html", form=form)
 
