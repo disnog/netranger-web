@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block pagetitle %}Rules{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">General Rules</h5>
+        {% include "general-rules.html" %}
+    </div>
+</div>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Full Member Rules</h5>
+        {% include "member-rules.html" %}
+    </div>
+</div>
+{% endblock %}

@@ -225,6 +225,14 @@ def home():
     )
 
 
+@app.route("/rules")
+@register_breadcrumb(app, ".home", "Rules")
+def rules():
+    return render_template(
+        "rules.html"
+    )
+
+
 @app.route("/members")
 @has_role(role_significance="Member", fail_action="join")
 @register_breadcrumb(app, ".home", "Members")
@@ -408,7 +416,7 @@ def join(postlogin=None):
     else:
         form = JoinForm()
         if form.userclass.data != 'Member':
-            form.accept_member_rules.validators=[]
+            form.accept_member_rules.validators = []
         if form.validate_on_submit():
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
             print("Passed validation.")
