@@ -196,19 +196,25 @@ def send_to_known_channel(significance, json_payload):
     r.raise_for_status()
 
 
-def assign_role(significance, member_id):
+def assign_role(significance, member):
+    user = enrich_member(member)
     role = nrdb.get_role_by_significance(app.config["GUILD_ID"], significance)
-    r = requests.put(
-        app.config["API_BASE_URL"]
-        + "/guilds/"
-        + app.config["GUILD_ID"]
-        + "/members/"
-        + member_id
-        + "/roles/"
-        + role["id"],
-        headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
-    )
-    r.raise_for_status()
+    if role['id'] in user['roles']:
+        return False
+    else:
+        member_id = user['id']
+        r = requests.put(
+            app.config["API_BASE_URL"]
+            + "/guilds/"
+            + app.config["GUILD_ID"]
+            + "/members/"
+            + member_id
+            + "/roles/"
+            + role["id"],
+            headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
+        )
+        r.raise_for_status()
+        return True
 
 
 @app.template_filter("utctime")
@@ -360,27 +366,25 @@ def join(postlogin=None):
         )
 
     def set_userclass_role():
-        # TODO: Only do this if they're not yet in Members
         if "Member" in g.user["permanent_roles"]:
             userclass = "Member"
             announcechannel = "greeting"
         elif "periphery" in g.user["permanent_roles"]:
             userclass = "periphery"
             announcechannel = "periphery_greeting"
-        assign_role(userclass, g.user["id"])
-
-        flash(
-            "Your userclass role has been synchronized on Discord. Please check your Discord client to find your new channels.",
-            category="success",
-        )
-
-        user = nrdb.get_user(g.user["id"])
-        member_number = user["member_number"]
-
-        json_payload = {
-            "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"
-        }
-        send_to_known_channel(announcechannel, json_payload)
+        if assign_role(userclass, g.user):
+            flash(
+                "Your userclass role has been synchronized on Discord. Please check your Discord client to find your new channels.",
+                category="success",
+            )
+            user = nrdb.get_user(g.user["id"])
+            member_number = user["member_number"]
+            json_payload = {
+                "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"
+            }
+            send_to_known_channel(announcechannel, json_payload)
+        else:
+            flash("You're already joined to the server with a synchronized role.", category="warning")
 
     if "user" not in g:
         return login(postlogin=postlogin, scope="identify guilds.join")
