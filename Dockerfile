@@ -4,5 +4,6 @@ COPY requirements.txt ./
 COPY nrweb ./nrweb
 RUN pip install --no-cache-dir -r requirements.txt
 
+ENV FLASK_APP=nrweb/run.py
 EXPOSE 5000
-CMD [ "python3", "nrweb" ]
+CMD [ "flask", "run" ]
