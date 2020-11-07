@@ -97,7 +97,7 @@ def has_role(role_significance="Member", fail_action="auto"):
                         # The user has the role
                         return f(*args, **kwargs)
                     else:
-                        if fail_action.lower() not in ["auto", "401", "join"]:
+                        if fail_action.lower() not in ["auto", "401", "403", "join"]:
                             fail_action = "auto"
                         if fail_action.lower() == "auto":
                             # Set unauthorized action to join if the role significance is members.
@@ -111,6 +111,8 @@ def has_role(role_significance="Member", fail_action="auto"):
                             return redirect(url_for("join"))
                         elif fail_action.lower() == "401":
                             abort(401)
+                        elif fail_action.lower() == "403":
+                            abort(403)
                 else:
                     # The user is not currently on the server
                     postlogin = urllib.parse.quote(
@@ -244,7 +246,7 @@ def rules():
 
 
 @app.route("/members")
-@has_role(role_significance="Member", fail_action="join")
+@has_role(role_significance="Member", fail_action="403")
 @register_breadcrumb(app, ".home", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
