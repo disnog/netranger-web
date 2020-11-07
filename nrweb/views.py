@@ -238,7 +238,7 @@ def home():
 
 
 @app.route("/rules")
-@register_breadcrumb(app, ".home", "Rules")
+@register_breadcrumb(app, ".rules", "Rules")
 def rules():
     return render_template(
         "rules.html"
@@ -247,7 +247,7 @@ def rules():
 
 @app.route("/members")
 @has_role(role_significance="Member", fail_action="403")
-@register_breadcrumb(app, ".home", "Members")
+@register_breadcrumb(app, ".members", "Members")
 def members():
     memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
     return render_template("members.html", memberlist=memberlist)
@@ -274,7 +274,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
 @app.route("/members/<int:userid>")
 @has_role(role_significance="Member", fail_action="join")
 @register_breadcrumb(
-    app, ".home.members", "", dynamic_list_constructor=userid_breadcrumb_constructor
+    app, ".members.user_id", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
 def profile(userid):
     user = g.db.db.users.find_one({"_id": userid})
@@ -331,7 +331,7 @@ def login_callback():
 
 @app.route("/join", methods=["GET", "POST"])
 @app.route("/join/<postlogin>", methods=["GET", "POST"])
-@register_breadcrumb(app, ".home", "Join")
+@register_breadcrumb(app, ".join", "Join")
 def join(postlogin=None):
     class JoinForm(FlaskForm):
 
