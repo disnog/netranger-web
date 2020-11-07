@@ -1,17 +1,53 @@
 {% extends "base.html" %}
 {% block pagetitle %}Home{% endblock %}
 {% block content %}
-<div class="card-columns">
-    <div class="card mb-3" style="max-width: 18rem;">
+<div class="card-group">
+    <div class="card mb-3">
         <div class="card-header"><h5 class="card-title">Registered Members</h5></div>
         <div class="card-body text-center display-4">
             {{registered_members}}
         </div>
     </div>
-    <div class="card mb-3" style="max-width: 18rem;">
+    <div class="card mb-3">
         <div class="card-header"><h5 class="card-title">Unaccepted Members</h5></div>
         <div class="card-body text-center display-4">
             {{unaccepted_members}}
+        </div>
+    </div>
+</div>
+<div class="card mb-3">
+    <div class="card-header"><h5 class="card-title">About</h5></div>
+    <div class="card-body">
+        <p class="card-text">Welcome to the web portal for the Networking Discord server!</p>
+        <p class="card-text">This is the place for:</p>
+        <div class="card-group">
+            <div class="card">
+                <div class="card-body">networking professionals to gather and share thoughts and knowledge</div>
+            </div>
+            <div class="card">
+                <div class="card-body">those who want to enter the networking profession to gain exposure</div>
+            </div>
+            <div class="card">
+                <div class="card-body">perhaps griping about the latest vendor bug or mismanagement priority</div>
+            </div>
+            <div class="card">
+                <div class="card-body">students and others looking to enter the profession to gain exposure and
+                    exchange knowledge
+                </div>
+            </div>
+        </div><p/>
+        <p class="card-text">In addition, we offer an alternative membership for those interested in subjects such
+            as:</p>
+        <div class="card-group">
+            <div class="card">
+                <div class="card-body">server administration</div>
+            </div>
+            <div class="card">
+                <div class="card-body">home networking</div>
+            </div>
+            <div class="card">
+                <div class="card-body">other IT disciplines</div>
+            </div>
         </div>
     </div>
 </div>
