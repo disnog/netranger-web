@@ -80,7 +80,7 @@ def do_before_request():
             # The user exists in the database.
             g.user.update(user_db_info)
             g.user = enrich_member(g.user)
-            if request.endpoint in ["join","login_callback"]:
+            if request.endpoint in ["join", "login_callback"]:
                 pass
             elif "roles" in g.user:
                 # The user is currently on the server. Make sure they have a known role, or redirect to join.
@@ -261,11 +261,13 @@ def utctime(s):
 @app.route("/home")
 @register_breadcrumb(app, ".", "Home")
 def home():
-    registered_members = g.db.db.users.count({"member_number": {"$exists": True}})
-    unaccepted_members = g.db.db.users.count({"member_number": {"$exists": False}})
+    general_members = g.db.db.users.count({"permanent_roles": {"$all": ["Member"]}})
+    periphery_members = g.db.db.users.count({"permanent_roles": {"$all": ["periphery"]}})
+    unaccepted_members = g.db.db.users.count() - periphery_members - general_members
     return render_template(
         "home.html",
-        registered_members=registered_members,
+        general_members=general_members,
+        periphery_members=periphery_members,
         unaccepted_members=unaccepted_members,
     )
 
@@ -288,9 +290,9 @@ def members():
 
 def userid_breadcrumb_constructor(*args, **kwargs):
     if "userid" in request.view_args:
-        userid=request.view_args["userid"]
+        userid = request.view_args["userid"]
     else:
-        userid=int(g.user["id"])
+        userid = int(g.user["id"])
     user = g.db.db.users.find_one(
         {"_id": userid}, {"name": True, "discriminator": True}
     )
@@ -301,6 +303,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
         }
     ]
 
+
 @app.route("/myprofile")
 @has_role()
 @register_breadcrumb(
@@ -310,6 +313,7 @@ def myprofile():
     user = g.db.db.users.find_one({"_id": int(g.user["id"])})
     user = enrich_user(user)
     return render_template("profile.html", user=user)
+
 
 @app.route("/members/<int:userid>")
 @has_role(role_significance="Member", fail_action="join")
