@@ -49,12 +49,12 @@
                 <a class="nav-link" href="/rules">Rules{% if request.endpoint in ['rules'] %}<span
                         class="sr-only"> (current)</span>{%
                     endif %}</a>
-            </li>
+            </li>{% if 'user' in g and 'Member' in g.user.permanent_roles %}
             <li class="nav-item{% if request.endpoint in ['members','profile'] %} active{% endif %}">
                 <a class="nav-link" href="/members">Members{% if request.endpoint in ['members','profile'] %}<span
                         class="sr-only"> (current)</span>{%
                     endif %}</a>
-            </li>
+            </li>{% endif %}
             <li class="nav-item">
                 <a class="nav-link" href="https://discord.neteng.xyz/botcommands" target="_blank">Bot Commands</a>
             </li>

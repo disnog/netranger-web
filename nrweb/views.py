@@ -82,7 +82,7 @@ def do_before_request():
         g.guild = nrdb.get_guild(app.config["GUILD_ID"])
 
 
-def has_role(role_significance="Member", fail_action="auto"):
+def has_role(role_significance=None, fail_action="auto"):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, fail_action=fail_action, **kwargs):
@@ -91,31 +91,37 @@ def has_role(role_significance="Member", fail_action="auto"):
                 g.user = enrich_member(g.user)
                 if "roles" in g.user:
                     # The user is currently on the server
-                    members_roleid = next(
-                        x
-                        for x in g.guild["known_roles"]
-                        if role_significance in x["significance"]
-                    )["id"]
-                    if members_roleid in g.user["roles"]:
-                        # The user has the role
-                        return f(*args, **kwargs)
+                    if not role_significance:
+                        known_role_ids = {kr['id'] for kr in g.guild["known_roles"]}
+                        if not set(g.user["roles"]).isdisjoint(known_role_ids):
+                            # The user is either assigned to any known roles, and we're not checking for a specific role.
+                            return f(*args, **kwargs)
                     else:
-                        if fail_action.lower() not in ["auto", "401", "403", "join"]:
-                            fail_action = "auto"
-                        if fail_action.lower() == "auto":
-                            # Set unauthorized action to join if the role significance is members.
-                            # Otherwise, return 401.
-                            if role_significance == "Member":
-                                fail_action = "join"
-                            else:
-                                fail_action = "401"
-                        if fail_action.lower() == "join":
-                            # TODO: Add postlogin
-                            return redirect(url_for("join"))
-                        elif fail_action.lower() == "401":
-                            abort(401)
-                        elif fail_action.lower() == "403":
-                            abort(403)
+                        members_roleid = next(
+                            x
+                            for x in g.guild["known_roles"]
+                            if role_significance in x["significance"]
+                        )["id"]
+                        if members_roleid in g.user["roles"]:
+                            # The user has the role
+                            return f(*args, **kwargs)
+                        else:
+                            if fail_action.lower() not in ["auto", "401", "403", "join"]:
+                                fail_action = "auto"
+                            if fail_action.lower() == "auto":
+                                # Set unauthorized action to join if the role significance is members.
+                                # Otherwise, return 401.
+                                if role_significance == "Member":
+                                    fail_action = "join"
+                                else:
+                                    fail_action = "401"
+                            if fail_action.lower() == "join":
+                                # TODO: Add postlogin
+                                return redirect(url_for("join"))
+                            elif fail_action.lower() == "401":
+                                abort(401)
+                            elif fail_action.lower() == "403":
+                                abort(403)
                 else:
                     # The user is not currently on the server
                     postlogin = urllib.parse.quote(
@@ -256,23 +262,30 @@ def members():
     return render_template("members.html", memberlist=memberlist)
 
 
-@app.route("/myprofile")
-@has_role(role_significance="Member")
-def myprofile():
-    return redirect(url_for("profile", userid=int(g.user["id"])))
-
-
 def userid_breadcrumb_constructor(*args, **kwargs):
+    if "userid" in request.view_args:
+        userid=request.view_args["userid"]
+    else:
+        userid=int(g.user["id"])
     user = g.db.db.users.find_one(
-        {"_id": request.view_args["userid"]}, {"name": True, "discriminator": True}
+        {"_id": userid}, {"name": True, "discriminator": True}
     )
     return [
         {
             "text": user["name"] + "#" + user["discriminator"],
-            "url": url_for(request.endpoint, userid=request.view_args["userid"]),
+            "url": url_for(request.endpoint, userid=userid),
         }
     ]
 
+@app.route("/myprofile")
+@has_role()
+@register_breadcrumb(
+    app, ".members.user_id", "", dynamic_list_constructor=userid_breadcrumb_constructor
+)
+def myprofile():
+    user = g.db.db.users.find_one({"_id": int(g.user["id"])})
+    user = enrich_user(user)
+    return render_template("profile.html", user=user)
 
 @app.route("/members/<int:userid>")
 @has_role(role_significance="Member", fail_action="join")
