@@ -72,14 +72,39 @@ def do_before_request():
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
+        g.guild = nrdb.get_guild(app.config["GUILD_ID"])
         user_db_info = g.db.db.users.find_one(
             {"_id": int(g.user["id"])}, {"permanent_roles": True, "member_number": True, "first_joined_at": True}
         )
         if user_db_info:
+            # The user exists in the database.
             g.user.update(user_db_info)
+            g.user = enrich_member(g.user)
+            if request.endpoint in ["join","login_callback"]:
+                pass
+            elif "roles" in g.user:
+                # The user is currently on the server. Make sure they have a known role, or redirect to join.
+                known_role_ids = {kr['id'] for kr in g.guild["known_roles"]}
+                if set(g.user["roles"]).isdisjoint(known_role_ids):
+                    # The user is either assigned to any known roles, and we're not checking for a specific role.
+                    postlogin = urllib.parse.quote(
+                        json.dumps({"endpoint": request.endpoint, **request.view_args})
+                    )
+                    return redirect(url_for("join", postlogin=postlogin))
+            else:
+                # Redirect to join as the user is not on the server even though they're logged in.
+                postlogin = urllib.parse.quote(
+                    json.dumps({"endpoint": request.endpoint, **request.view_args})
+                )
+                return redirect(url_for("join", postlogin=postlogin))
         else:
             g.user.update({"permanent_roles": list()})
-        g.guild = nrdb.get_guild(app.config["GUILD_ID"])
+            if request.endpoint not in ["join", "login_callback"]:
+                # Redirect the user to join as they are not in the database.
+                postlogin = urllib.parse.quote(
+                    json.dumps({"endpoint": request.endpoint, **request.view_args})
+                )
+                return redirect(url_for("join", postlogin=postlogin))
 
 
 def has_role(role_significance=None, fail_action="auto"):
@@ -88,7 +113,6 @@ def has_role(role_significance=None, fail_action="auto"):
         def wrapper(*args, fail_action=fail_action, **kwargs):
             # Check if user is logged in
             if "user" in g:
-                g.user = enrich_member(g.user)
                 if "roles" in g.user:
                     # The user is currently on the server
                     if not role_significance:
