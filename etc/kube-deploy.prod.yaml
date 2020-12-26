@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: dev
+  name: network-ranger
 
 ---
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  namespace: dev
+  namespace: network-ranger
   name: network-ranger-web
   labels:
     app: network-ranger-web
@@ -33,6 +33,11 @@ spec:
                 secretKeyRef:
                   name: network-ranger
                   key: TOKEN
+            - name: GUILD_ID
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: GUILD_ID
             - name: OAUTH2_CLIENT_ID
               valueFrom:
                 secretKeyRef:
@@ -54,13 +59,17 @@ spec:
                 secretKeyRef:
                   name: mongodb
                   key: mongodb-root-password
-#      restartPolicy: Always
+            - name: NRWEB_ENVIRONMENT
+              value: "dev"
+            - name: OAUTH2_REDIRECT_URI
+              value: "http://localhost:5000/login_callback"
+      restartPolicy: Always
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: dev
+  namespace: network-ranger
   labels:
     app: network-ranger-web
   name: network-ranger-web-service

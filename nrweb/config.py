@@ -25,6 +25,8 @@ OAUTH2_REDIRECT_URI = os.environ.get(
 NRWEB_ENVIRONMENT = os.environ.get("NRWEB_ENVIRONMENT", "prod").lower()
 if "http://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "dev":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
+elif "https://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "prod":
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
 
 OAUTH2_CLIENT_ID = os.environ["OAUTH2_CLIENT_ID"]
 OAUTH2_CLIENT_SECRET = os.environ["OAUTH2_CLIENT_SECRET"]

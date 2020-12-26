@@ -16,6 +16,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import json
+import urllib.parse
+from datetime import datetime
+from functools import wraps
+from os import sys
+
+import requests
 from flask import (
     redirect,
     url_for,
@@ -28,19 +35,15 @@ from flask import (
     Markup,
 )
 from flask_breadcrumbs import register_breadcrumb
-from flask_wtf import FlaskForm
-from wtforms import SelectField
-from wtforms import BooleanField
-from wtforms.validators import InputRequired
-from nrweb import app, nrdb
-from requests_oauthlib import OAuth2Session
-import urllib.parse
-import json
 from flask_pymongo import PyMongo
-import uuid
-from functools import wraps
-from datetime import datetime
-import requests
+from flask_wtf import FlaskForm
+from oauthlib.oauth2.rfc6749.errors import InvalidClientError
+from requests_oauthlib import OAuth2Session
+from wtforms import BooleanField
+from wtforms import SelectField
+from wtforms.validators import InputRequired
+
+from nrweb import app, nrdb
 
 
 def token_updater(token):
@@ -311,11 +314,16 @@ def login_callback():
         )
         return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
-    token = g.discord.fetch_token(
-        app.config["TOKEN_URL"],
-        client_secret=app.config["OAUTH2_CLIENT_SECRET"],
-        authorization_response=request.url,
-    )
+    try:
+        token = g.discord.fetch_token(
+            app.config["TOKEN_URL"],
+            client_secret=app.config["OAUTH2_CLIENT_SECRET"],
+            authorization_response=request.url,
+            headers={'Content-Type': "application/x-www-form-urlencoded"},
+        )
+    except InvalidClientError as err:
+        print(err.json, file=sys.stderr)
+        raise
     session["oauth2_token"] = token
     if "guilds.join" in token.scopes:
         redirect_target = url_for("join")
