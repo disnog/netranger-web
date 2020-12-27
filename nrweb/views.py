@@ -200,6 +200,12 @@ def join_user_to_guild(guildid, access_token, userid):
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
         json={"access_token": access_token},
     )
+    if r.status_code == 201:
+        app.logger.info('join_user_to_guild - SUCCESS - join %s to %s (%s) via endpoint %s', request.endpoint,
+                        userid, guildid, r.status_code, request.endpoint)
+    else:
+        app.logger.error('join_user_to_guild - FAILURE - join %s to %s (%s) via endpoint %s', request.endpoint,
+                         userid, guildid, r.status_code, request.endpoint)
     return r
 
 
@@ -362,9 +368,6 @@ def login_callback():
             authorization_response=request.url,
             headers={'Content-Type': "application/x-www-form-urlencoded"},
         )
-    except InvalidClientError as err:
-        print(err.json, file=sys.stderr)
-        raise
     session["oauth2_token"] = token
     if "guilds.join" in token.scopes:
         redirect_target = url_for("join")
@@ -454,7 +457,7 @@ def join(postlogin=None):
             # User was joined to the guild.
             set_userclass_role()
             flash(
-                "You've joined the Discord server! Please check your Discord client to find it added to your server list.",
+                "You've joined the Discord server! Please check your Discord client to find it in your server list.",
                 category="success",
             )
         else:
