@@ -20,7 +20,6 @@ import json
 import urllib.parse
 from datetime import datetime
 from functools import wraps
-from os import sys
 
 import requests
 from flask import (
@@ -41,6 +40,8 @@ from requests_oauthlib import OAuth2Session
 from wtforms import BooleanField
 from wtforms import SelectField
 from wtforms.validators import InputRequired
+
+from inspect import currentframe
 
 from nrweb import app, nrdb
 
@@ -67,7 +68,7 @@ def make_session(token=None, state=None, scope=None):
 
 @app.before_request
 def do_before_request():
-    app.logger.debug('do_before_request - endpoint %s', request.endpoint)
+    app.logger.debug('do_before_request - path %s', request.path)
     g.db = PyMongo(app)
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
@@ -90,12 +91,16 @@ def do_before_request():
                     postlogin = urllib.parse.quote(
                         json.dumps({"endpoint": request.endpoint, **request.view_args})
                     )
+                    app.logger.debug(
+                        f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
                     return redirect(url_for("join", postlogin=postlogin))
             else:
                 # Redirect to join as the user is not on the server even though they're logged in.
                 postlogin = urllib.parse.quote(
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
+                app.logger.debug(
+                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
                 return redirect(url_for("join", postlogin=postlogin))
         else:
             g.user.update({"permanent_roles": list()})
@@ -104,6 +109,8 @@ def do_before_request():
                 postlogin = urllib.parse.quote(
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
+                app.logger.debug(
+                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
                 return redirect(url_for("join", postlogin=postlogin))
 
 
@@ -141,6 +148,8 @@ def has_role(role_significance=None, fail_action="auto"):
                                     fail_action = "401"
                             if fail_action.lower() == "join":
                                 # TODO: Add postlogin
+                                app.logger.debug(
+                                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join')}")
                                 return redirect(url_for("join"))
                             elif fail_action.lower() == "401":
                                 abort(401)
@@ -151,11 +160,15 @@ def has_role(role_significance=None, fail_action="auto"):
                     postlogin = urllib.parse.quote(
                         json.dumps({"endpoint": request.endpoint, **request.view_args})
                     )
+                    app.logger.debug(
+                        f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
                     return redirect(url_for("join", postlogin=postlogin))
             else:
                 postlogin = urllib.parse.quote(
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
+                app.logger.debug(
+                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('login', postlogin=postlogin)}")
                 return redirect(url_for("login", postlogin=postlogin))
 
         return wrapper
@@ -201,12 +214,14 @@ def join_user_to_guild(guildid, access_token, userid):
         json={"access_token": access_token},
     )
     if r.status_code == 201:
-        app.logger.info(f"join_user_to_guild - SUCCESS ({r.status_code}) - join {userid} to {guildid} via endpoint {request.endpoint}")
+        app.logger.info(
+            f"join_user_to_guild - SUCCESS ({r.status_code}) - join {userid} to {guildid} via {request.path}")
     elif r.status_code == 204:
-        app.logger.warning(f"join_user_to_guild - WARNING ({r.status_code}) - {userid} already in {guildid} via endpoint {request.endpoint}")
+        app.logger.warning(
+            f"join_user_to_guild - WARNING ({r.status_code}) - {userid} already in {guildid} via {request.path}")
     else:
-        app.logger.error('join_user_to_guild - FAILURE %s- join %s to %s (%s) via endpoint %s',
-                         userid, guildid, r.status_code, request.endpoint)
+        app.logger.error(
+            f"join_user_to_guild - FAILURE ({r.status_code}) - join {userid} to {guildid} via {request.path}")
     return r
 
 
@@ -346,12 +361,15 @@ def login(postlogin=None, scope="identify"):
     else:
         session["postlogin"] = {"endpoint": "home"}
     session["oauth2_state"] = state
+    app.logger.debug(
+        f"login - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {authorization_url}")
     return redirect(authorization_url)
 
 
 @app.route("/login_callback")
 def login_callback():
     if request.values.get("error"):
+        # Permissions not granted by Discord
         flash(
             Markup(
                 "You need to grant permissions to authenticate. <a href='{loginurl}'>Try again</a>?".format(
@@ -360,6 +378,8 @@ def login_callback():
             ),
             category="danger",
         )
+        app.logger.debug(
+            f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('home')}")
         return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
     token = g.discord.fetch_token(
@@ -378,6 +398,8 @@ def login_callback():
     else:
         redirect_target = url_for("home")
     flash("Logged in successfully.", category="success")
+    app.logger.debug(
+        f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
     return redirect(redirect_target)
 
 
@@ -440,7 +462,9 @@ def join(postlogin=None):
         else:
             flash("You're already joined to the server with a synchronized role.", category="warning")
 
-    if "user" not in g:
+    if "user" not in g or "guilds.join" not in session["oauth2_token"].get("scope",list()):
+        app.logger.debug(
+            f"join - {currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to login() w/ guilds.join scope")
         return login(postlogin=postlogin, scope="identify guilds.join")
     # Check if the user is already a Member or periphery.
     elif {"Member", "periphery"}.intersection(g.user["permanent_roles"]):
@@ -450,7 +474,10 @@ def join(postlogin=None):
             session["oauth2_token"]["access_token"],
             g.user["id"],
         )
-        if r.status_code == 204:
+        if r.status_code == 403:
+            # Forbidden back from Discord API: Token not valid for guilds.join scope.
+            return login(postlogin=postlogin, scope="identify guilds.join")
+        elif r.status_code == 204:
             # User is already in the guild.
             set_userclass_role()
         elif r.status_code == 201:
@@ -474,6 +501,8 @@ def join(postlogin=None):
             redirect_target = url_for("home")
         if "postlogin" in session:
             del session["postlogin"]
+        app.logger.debug(
+            f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
         return redirect(redirect_target)
     else:
         form = JoinForm()
@@ -483,6 +512,8 @@ def join(postlogin=None):
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
             if form.userclass.data in ['Member', 'periphery']:
                 nrdb.upsert_member(g.user, [form.userclass.data])
+                app.logger.debug(
+                    f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
                 return redirect(url_for("join", postlogin=postlogin))
         # Ask where they want to join
         return render_template("join.html", form=form)
@@ -495,4 +526,6 @@ def logout():
     session.clear()
     redirect_target = url_for("home")
     flash("Logged out successfully.", category="info")
+    app.logger.debug(
+        f"logout - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
     return redirect(redirect_target)
