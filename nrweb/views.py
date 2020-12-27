@@ -37,7 +37,6 @@ from flask import (
 from flask_breadcrumbs import register_breadcrumb
 from flask_pymongo import PyMongo
 from flask_wtf import FlaskForm
-from oauthlib.oauth2.rfc6749.errors import InvalidClientError
 from requests_oauthlib import OAuth2Session
 from wtforms import BooleanField
 from wtforms import SelectField
@@ -68,6 +67,7 @@ def make_session(token=None, state=None, scope=None):
 
 @app.before_request
 def do_before_request():
+    app.logger.debug('do_before_request - endpoint %s', request.endpoint)
     g.db = PyMongo(app)
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
@@ -201,10 +201,11 @@ def join_user_to_guild(guildid, access_token, userid):
         json={"access_token": access_token},
     )
     if r.status_code == 201:
-        app.logger.info('join_user_to_guild - SUCCESS - join %s to %s (%s) via endpoint %s', request.endpoint,
-                        userid, guildid, r.status_code, request.endpoint)
+        app.logger.info(f"join_user_to_guild - SUCCESS ({r.status_code}) - join {userid} to {guildid} via endpoint {request.endpoint}")
+    elif r.status_code == 204:
+        app.logger.warning(f"join_user_to_guild - WARNING ({r.status_code}) - {userid} already in {guildid} via endpoint {request.endpoint}")
     else:
-        app.logger.error('join_user_to_guild - FAILURE - join %s to %s (%s) via endpoint %s', request.endpoint,
+        app.logger.error('join_user_to_guild - FAILURE %s- join %s to %s (%s) via endpoint %s',
                          userid, guildid, r.status_code, request.endpoint)
     return r
 
@@ -361,13 +362,12 @@ def login_callback():
         )
         return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
-    try:
-        token = g.discord.fetch_token(
-            app.config["TOKEN_URL"],
-            client_secret=app.config["OAUTH2_CLIENT_SECRET"],
-            authorization_response=request.url,
-            headers={'Content-Type': "application/x-www-form-urlencoded"},
-        )
+    token = g.discord.fetch_token(
+        app.config["TOKEN_URL"],
+        client_secret=app.config["OAUTH2_CLIENT_SECRET"],
+        authorization_response=request.url,
+        headers={'Content-Type': "application/x-www-form-urlencoded"},
+    )
     session["oauth2_token"] = token
     if "guilds.join" in token.scopes:
         redirect_target = url_for("join")
