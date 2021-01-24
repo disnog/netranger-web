@@ -81,7 +81,7 @@ def do_before_request():
             # The user exists in the database.
             g.user.update(user_db_info)
             g.user = enrich_member(g.user)
-            if request.endpoint in ["join", "login_callback"]:
+            if request.endpoint in ["join", "login_callback","logout"]:
                 pass
             elif "roles" in g.user:
                 # The user is currently on the server. Make sure they have a known role, or redirect to join.
@@ -104,7 +104,7 @@ def do_before_request():
                 return redirect(url_for("join", postlogin=postlogin))
         else:
             g.user.update({"permanent_roles": list()})
-            if request.endpoint not in ["join", "login_callback"]:
+            if request.endpoint not in ["join", "login_callback", "logout"]:
                 # Redirect the user to join as they are not in the database.
                 postlogin = urllib.parse.quote(
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
