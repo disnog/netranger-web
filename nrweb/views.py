@@ -16,6 +16,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import json
+import urllib.parse
+from datetime import datetime
+from functools import wraps
+
+import requests
 from flask import (
     redirect,
     url_for,
@@ -28,19 +34,16 @@ from flask import (
     Markup,
 )
 from flask_breadcrumbs import register_breadcrumb
-from flask_wtf import FlaskForm
-from wtforms import SelectField
-from wtforms import BooleanField
-from wtforms.validators import InputRequired
-from nrweb import app, nrdb
-from requests_oauthlib import OAuth2Session
-import urllib.parse
-import json
 from flask_pymongo import PyMongo
-import uuid
-from functools import wraps
-from datetime import datetime
-import requests
+from flask_wtf import FlaskForm
+from requests_oauthlib import OAuth2Session
+from wtforms import BooleanField
+from wtforms import SelectField
+from wtforms.validators import InputRequired
+
+from inspect import currentframe
+
+from nrweb import app, nrdb
 
 
 def token_updater(token):
@@ -65,64 +68,107 @@ def make_session(token=None, state=None, scope=None):
 
 @app.before_request
 def do_before_request():
+    app.logger.debug('do_before_request - path %s', request.path)
     g.db = PyMongo(app)
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
+        g.guild = nrdb.get_guild(app.config["GUILD_ID"])
         user_db_info = g.db.db.users.find_one(
             {"_id": int(g.user["id"])}, {"permanent_roles": True, "member_number": True, "first_joined_at": True}
         )
         if user_db_info:
+            # The user exists in the database.
             g.user.update(user_db_info)
+            g.user = enrich_member(g.user)
+            if request.endpoint in ["join", "login_callback","logout"]:
+                pass
+            elif "roles" in g.user:
+                # The user is currently on the server. Make sure they have a known role, or redirect to join.
+                known_role_ids = {kr['id'] for kr in g.guild["known_roles"]}
+                if set(g.user["roles"]).isdisjoint(known_role_ids):
+                    # The user is either assigned to any known roles, and we're not checking for a specific role.
+                    postlogin = urllib.parse.quote(
+                        json.dumps({"endpoint": request.endpoint, **request.view_args})
+                    )
+                    app.logger.debug(
+                        f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                    return redirect(url_for("join", postlogin=postlogin))
+            else:
+                # Redirect to join as the user is not on the server even though they're logged in.
+                postlogin = urllib.parse.quote(
+                    json.dumps({"endpoint": request.endpoint, **request.view_args})
+                )
+                app.logger.debug(
+                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                return redirect(url_for("join", postlogin=postlogin))
         else:
             g.user.update({"permanent_roles": list()})
-        g.guild = nrdb.get_guild(app.config["GUILD_ID"])
+            if request.endpoint not in ["join", "login_callback", "logout"]:
+                # Redirect the user to join as they are not in the database.
+                postlogin = urllib.parse.quote(
+                    json.dumps({"endpoint": request.endpoint, **request.view_args})
+                )
+                app.logger.debug(
+                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                return redirect(url_for("join", postlogin=postlogin))
 
 
-def has_role(role_significance="Member", fail_action="auto"):
+def has_role(role_significance=None, fail_action="auto"):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, fail_action=fail_action, **kwargs):
             # Check if user is logged in
             if "user" in g:
-                g.user = enrich_member(g.user)
                 if "roles" in g.user:
                     # The user is currently on the server
-                    members_roleid = next(
-                        x
-                        for x in g.guild["known_roles"]
-                        if role_significance in x["significance"]
-                    )["id"]
-                    if members_roleid in g.user["roles"]:
-                        # The user has the role
-                        return f(*args, **kwargs)
+                    if not role_significance:
+                        known_role_ids = {kr['id'] for kr in g.guild["known_roles"]}
+                        if not set(g.user["roles"]).isdisjoint(known_role_ids):
+                            # The user is either assigned to any known roles, and we're not checking for a specific role.
+                            return f(*args, **kwargs)
                     else:
-                        if fail_action.lower() not in ["auto", "401", "403", "join"]:
-                            fail_action = "auto"
-                        if fail_action.lower() == "auto":
-                            # Set unauthorized action to join if the role significance is members.
-                            # Otherwise, return 401.
-                            if role_significance == "Member":
-                                fail_action = "join"
-                            else:
-                                fail_action = "401"
-                        if fail_action.lower() == "join":
-                            # TODO: Add postlogin
-                            return redirect(url_for("join"))
-                        elif fail_action.lower() == "401":
-                            abort(401)
-                        elif fail_action.lower() == "403":
-                            abort(403)
+                        members_roleid = next(
+                            x
+                            for x in g.guild["known_roles"]
+                            if role_significance in x["significance"]
+                        )["id"]
+                        if members_roleid in g.user["roles"]:
+                            # The user has the role
+                            return f(*args, **kwargs)
+                        else:
+                            if fail_action.lower() not in ["auto", "401", "403", "join"]:
+                                fail_action = "auto"
+                            if fail_action.lower() == "auto":
+                                # Set unauthorized action to join if the role significance is members.
+                                # Otherwise, return 401.
+                                if role_significance == "Member":
+                                    fail_action = "join"
+                                else:
+                                    fail_action = "401"
+                            if fail_action.lower() == "join":
+                                # TODO: Add postlogin
+                                app.logger.debug(
+                                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join')}")
+                                return redirect(url_for("join"))
+                            elif fail_action.lower() == "401":
+                                abort(401)
+                            elif fail_action.lower() == "403":
+                                abort(403)
                 else:
                     # The user is not currently on the server
                     postlogin = urllib.parse.quote(
                         json.dumps({"endpoint": request.endpoint, **request.view_args})
                     )
+                    app.logger.debug(
+                        f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
                     return redirect(url_for("join", postlogin=postlogin))
             else:
                 postlogin = urllib.parse.quote(
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
+                app.logger.debug(
+                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('login', postlogin=postlogin)}")
                 return redirect(url_for("login", postlogin=postlogin))
 
         return wrapper
@@ -167,6 +213,15 @@ def join_user_to_guild(guildid, access_token, userid):
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
         json={"access_token": access_token},
     )
+    if r.status_code == 201:
+        app.logger.info(
+            f"join_user_to_guild - SUCCESS ({r.status_code}) - join {userid} to {guildid} via {request.path}")
+    elif r.status_code == 204:
+        app.logger.warning(
+            f"join_user_to_guild - WARNING ({r.status_code}) - {userid} already in {guildid} via {request.path}")
+    else:
+        app.logger.error(
+            f"join_user_to_guild - FAILURE ({r.status_code}) - join {userid} to {guildid} via {request.path}")
     return r
 
 
@@ -228,11 +283,13 @@ def utctime(s):
 @app.route("/home")
 @register_breadcrumb(app, ".", "Home")
 def home():
-    registered_members = g.db.db.users.count({"member_number": {"$exists": True}})
-    unaccepted_members = g.db.db.users.count({"member_number": {"$exists": False}})
+    general_members = g.db.db.users.count({"permanent_roles": {"$all": ["Member"]}})
+    periphery_members = g.db.db.users.count({"permanent_roles": {"$all": ["periphery"]}})
+    unaccepted_members = g.db.db.users.count() - periphery_members - general_members
     return render_template(
         "home.html",
-        registered_members=registered_members,
+        general_members=general_members,
+        periphery_members=periphery_members,
         unaccepted_members=unaccepted_members,
     )
 
@@ -253,22 +310,31 @@ def members():
     return render_template("members.html", memberlist=memberlist)
 
 
-@app.route("/myprofile")
-@has_role(role_significance="Member")
-def myprofile():
-    return redirect(url_for("profile", userid=int(g.user["id"])))
-
-
 def userid_breadcrumb_constructor(*args, **kwargs):
+    if "userid" in request.view_args:
+        userid = request.view_args["userid"]
+    else:
+        userid = int(g.user["id"])
     user = g.db.db.users.find_one(
-        {"_id": request.view_args["userid"]}, {"name": True, "discriminator": True}
+        {"_id": userid}, {"name": True, "discriminator": True}
     )
     return [
         {
             "text": user["name"] + "#" + user["discriminator"],
-            "url": url_for(request.endpoint, userid=request.view_args["userid"]),
+            "url": url_for(request.endpoint, userid=userid),
         }
     ]
+
+
+@app.route("/myprofile")
+@has_role()
+@register_breadcrumb(
+    app, ".members.user_id", "", dynamic_list_constructor=userid_breadcrumb_constructor
+)
+def myprofile():
+    user = g.db.db.users.find_one({"_id": int(g.user["id"])})
+    user = enrich_user(user)
+    return render_template("profile.html", user=user)
 
 
 @app.route("/members/<int:userid>")
@@ -295,12 +361,15 @@ def login(postlogin=None, scope="identify"):
     else:
         session["postlogin"] = {"endpoint": "home"}
     session["oauth2_state"] = state
+    app.logger.debug(
+        f"login - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {authorization_url}")
     return redirect(authorization_url)
 
 
 @app.route("/login_callback")
 def login_callback():
     if request.values.get("error"):
+        # Permissions not granted by Discord
         flash(
             Markup(
                 "You need to grant permissions to authenticate. <a href='{loginurl}'>Try again</a>?".format(
@@ -309,12 +378,15 @@ def login_callback():
             ),
             category="danger",
         )
+        app.logger.debug(
+            f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('home')}")
         return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
     token = g.discord.fetch_token(
         app.config["TOKEN_URL"],
         client_secret=app.config["OAUTH2_CLIENT_SECRET"],
         authorization_response=request.url,
+        headers={'Content-Type': "application/x-www-form-urlencoded"},
     )
     session["oauth2_token"] = token
     if "guilds.join" in token.scopes:
@@ -326,6 +398,8 @@ def login_callback():
     else:
         redirect_target = url_for("home")
     flash("Logged in successfully.", category="success")
+    app.logger.debug(
+        f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
     return redirect(redirect_target)
 
 
@@ -388,7 +462,9 @@ def join(postlogin=None):
         else:
             flash("You're already joined to the server with a synchronized role.", category="warning")
 
-    if "user" not in g:
+    if "user" not in g or "guilds.join" not in session["oauth2_token"].get("scope",list()):
+        app.logger.debug(
+            f"join - {currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to login() w/ guilds.join scope")
         return login(postlogin=postlogin, scope="identify guilds.join")
     # Check if the user is already a Member or periphery.
     elif {"Member", "periphery"}.intersection(g.user["permanent_roles"]):
@@ -398,14 +474,17 @@ def join(postlogin=None):
             session["oauth2_token"]["access_token"],
             g.user["id"],
         )
-        if r.status_code == 204:
+        if r.status_code == 403:
+            # Forbidden back from Discord API: Token not valid for guilds.join scope.
+            return login(postlogin=postlogin, scope="identify guilds.join")
+        elif r.status_code == 204:
             # User is already in the guild.
             set_userclass_role()
         elif r.status_code == 201:
             # User was joined to the guild.
             set_userclass_role()
             flash(
-                "You've joined the Discord server! Please check your Discord client to find it added to your server list.",
+                "You've joined the Discord server! Please check your Discord client to find it in your server list.",
                 category="success",
             )
         else:
@@ -422,6 +501,8 @@ def join(postlogin=None):
             redirect_target = url_for("home")
         if "postlogin" in session:
             del session["postlogin"]
+        app.logger.debug(
+            f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
         return redirect(redirect_target)
     else:
         form = JoinForm()
@@ -431,6 +512,8 @@ def join(postlogin=None):
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
             if form.userclass.data in ['Member', 'periphery']:
                 nrdb.upsert_member(g.user, [form.userclass.data])
+                app.logger.debug(
+                    f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
                 return redirect(url_for("join", postlogin=postlogin))
         # Ask where they want to join
         return render_template("join.html", form=form)
@@ -443,4 +526,6 @@ def logout():
     session.clear()
     redirect_target = url_for("home")
     flash("Logged out successfully.", category="info")
+    app.logger.debug(
+        f"logout - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
     return redirect(redirect_target)

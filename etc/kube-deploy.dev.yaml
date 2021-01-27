@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  namespace: dev
+  name: network-ranger-web
+  labels:
+    app: network-ranger-web
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: network-ranger-web
+  template:
+    metadata:
+      labels:
+        app: network-ranger-web
+    spec:
+      containers:
+        - name: network-ranger-web
+          image: netdiscord/network-ranger-web:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: TOKEN
+            - name: OAUTH2_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: OAUTH2_CLIENT_ID
+            - name: OAUTH2_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: OAUTH2_CLIENT_SECRET
+            - name: MONGO_HOST
+              value: "mongodb:27017"
+            - name: MONGO_USER
+              value: "root"
+            - name: MONGO_NAME
+              value: "network_ranger"
+            - name: MONGO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb
+                  key: mongodb-root-password
+#      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  labels:
+    app: network-ranger-web
+  name: network-ranger-web-service
+spec:
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: network-ranger-web
+  type: ClusterIP
