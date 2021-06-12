@@ -43,18 +43,18 @@ def get_channel_by_significance(guild_id, channel_significance):
 
 def upsert_member(user, role_significances):
     if "permanent_roles" not in user:
-        user['permanent_roles'] = list()
+        user["permanent_roles"] = list()
     for role_significance in role_significances:
-        if role_significance not in user['permanent_roles']:
-            user['permanent_roles'].append(role_significance)
+        if role_significance not in user["permanent_roles"]:
+            user["permanent_roles"].append(role_significance)
     m = {
-        "name": user['username'],
-        "discriminator": user['discriminator'],
-        "permanent_roles": user['permanent_roles'],
+        "name": user["username"],
+        "discriminator": user["discriminator"],
+        "permanent_roles": user["permanent_roles"],
     }
-    if not (user.get('first_joined_at')):
+    if not (user.get("first_joined_at")):
         m.update({"first_joined_at": datetime.utcnow().timestamp()})
-    if not (user.get('member_number')):
+    if not (user.get("member_number")):
         nextnumber = g.db.db.config.find_one_and_update(
             {"name": "last_member_number"},
             {"$inc": {"value": 1}},
@@ -63,7 +63,11 @@ def upsert_member(user, role_significances):
             upsert=True,
         )["value"]
         m.update({"member_number": nextnumber})
-    g.db.db.users.update_one({"_id": int(user['id'])}, {"$setOnInsert": {"_id": int(user['id']) }, "$set": m}, upsert=True)
+    g.db.db.users.update_one(
+        {"_id": int(user["id"])},
+        {"$setOnInsert": {"_id": int(user["id"])}, "$set": m},
+        upsert=True,
+    )
 
     # TODO: Fix these! They break schema.
     # def add_channel_significance(channel_id, guild_id, channel_significance):
