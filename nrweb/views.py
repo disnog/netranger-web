@@ -68,31 +68,33 @@ def make_session(token=None, state=None, scope=None):
 
 @app.before_request
 def do_before_request():
-    app.logger.debug('do_before_request - path %s', request.path)
+    app.logger.debug("do_before_request - path %s", request.path)
     g.db = PyMongo(app)
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
         g.guild = nrdb.get_guild(app.config["GUILD_ID"])
         user_db_info = g.db.db.users.find_one(
-            {"_id": int(g.user["id"])}, {"permanent_roles": True, "member_number": True, "first_joined_at": True}
+            {"_id": int(g.user["id"])},
+            {"permanent_roles": True, "member_number": True, "first_joined_at": True},
         )
         if user_db_info:
             # The user exists in the database.
             g.user.update(user_db_info)
             g.user = enrich_member(g.user)
-            if request.endpoint in ["join", "login_callback","logout"]:
+            if request.endpoint in ["join", "login_callback", "logout"]:
                 pass
             elif "roles" in g.user:
                 # The user is currently on the server. Make sure they have a known role, or redirect to join.
-                known_role_ids = {kr['id'] for kr in g.guild["known_roles"]}
+                known_role_ids = {kr["id"] for kr in g.guild["known_roles"]}
                 if set(g.user["roles"]).isdisjoint(known_role_ids):
                     # The user is either assigned to any known roles, and we're not checking for a specific role.
                     postlogin = urllib.parse.quote(
                         json.dumps({"endpoint": request.endpoint, **request.view_args})
                     )
                     app.logger.debug(
-                        f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                        f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}"
+                    )
                     return redirect(url_for("join", postlogin=postlogin))
             else:
                 # Redirect to join as the user is not on the server even though they're logged in.
@@ -100,7 +102,8 @@ def do_before_request():
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
                 app.logger.debug(
-                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}"
+                )
                 return redirect(url_for("join", postlogin=postlogin))
         else:
             g.user.update({"permanent_roles": list()})
@@ -110,7 +113,8 @@ def do_before_request():
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
                 app.logger.debug(
-                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                    f"do_before_request - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}"
+                )
                 return redirect(url_for("join", postlogin=postlogin))
 
 
@@ -123,7 +127,7 @@ def has_role(role_significance=None, fail_action="auto"):
                 if "roles" in g.user:
                     # The user is currently on the server
                     if not role_significance:
-                        known_role_ids = {kr['id'] for kr in g.guild["known_roles"]}
+                        known_role_ids = {kr["id"] for kr in g.guild["known_roles"]}
                         if not set(g.user["roles"]).isdisjoint(known_role_ids):
                             # The user is either assigned to any known roles, and we're not checking for a specific role.
                             return f(*args, **kwargs)
@@ -137,7 +141,12 @@ def has_role(role_significance=None, fail_action="auto"):
                             # The user has the role
                             return f(*args, **kwargs)
                         else:
-                            if fail_action.lower() not in ["auto", "401", "403", "join"]:
+                            if fail_action.lower() not in [
+                                "auto",
+                                "401",
+                                "403",
+                                "join",
+                            ]:
                                 fail_action = "auto"
                             if fail_action.lower() == "auto":
                                 # Set unauthorized action to join if the role significance is members.
@@ -149,7 +158,8 @@ def has_role(role_significance=None, fail_action="auto"):
                             if fail_action.lower() == "join":
                                 # TODO: Add postlogin
                                 app.logger.debug(
-                                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join')}")
+                                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join')}"
+                                )
                                 return redirect(url_for("join"))
                             elif fail_action.lower() == "401":
                                 abort(401)
@@ -161,14 +171,16 @@ def has_role(role_significance=None, fail_action="auto"):
                         json.dumps({"endpoint": request.endpoint, **request.view_args})
                     )
                     app.logger.debug(
-                        f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                        f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}"
+                    )
                     return redirect(url_for("join", postlogin=postlogin))
             else:
                 postlogin = urllib.parse.quote(
                     json.dumps({"endpoint": request.endpoint, **request.view_args})
                 )
                 app.logger.debug(
-                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('login', postlogin=postlogin)}")
+                    f"has_role - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('login', postlogin=postlogin)}"
+                )
                 return redirect(url_for("login", postlogin=postlogin))
 
         return wrapper
@@ -178,7 +190,7 @@ def has_role(role_significance=None, fail_action="auto"):
 
 def enrich_member(user):
     if "_id" not in user.keys() and "id" in user.keys():
-        user['_id'] = user['id']
+        user["_id"] = user["id"]
     r = requests.get(
         app.config["API_BASE_URL"]
         + "/guilds/"
@@ -215,13 +227,16 @@ def join_user_to_guild(guildid, access_token, userid):
     )
     if r.status_code == 201:
         app.logger.info(
-            f"join_user_to_guild - SUCCESS ({r.status_code}) - join {userid} to {guildid} via {request.path}")
+            f"join_user_to_guild - SUCCESS ({r.status_code}) - join {userid} to {guildid} via {request.path}"
+        )
     elif r.status_code == 204:
         app.logger.warning(
-            f"join_user_to_guild - WARNING ({r.status_code}) - {userid} already in {guildid} via {request.path}")
+            f"join_user_to_guild - WARNING ({r.status_code}) - {userid} already in {guildid} via {request.path}"
+        )
     else:
         app.logger.error(
-            f"join_user_to_guild - FAILURE ({r.status_code}) - join {userid} to {guildid} via {request.path}")
+            f"join_user_to_guild - FAILURE ({r.status_code}) - join {userid} to {guildid} via {request.path}"
+        )
     return r
 
 
@@ -256,10 +271,10 @@ def send_to_known_channel(significance, json_payload):
 def assign_role(significance, member):
     user = enrich_member(member)
     role = nrdb.get_role_by_significance(app.config["GUILD_ID"], significance)
-    if role['id'] in user['roles']:
+    if role["id"] in user["roles"]:
         return False
     else:
-        member_id = user['id']
+        member_id = user["id"]
         r = requests.put(
             app.config["API_BASE_URL"]
             + "/guilds/"
@@ -284,7 +299,9 @@ def utctime(s):
 @register_breadcrumb(app, ".", "Home")
 def home():
     general_members = g.db.db.users.count({"permanent_roles": {"$all": ["Member"]}})
-    periphery_members = g.db.db.users.count({"permanent_roles": {"$all": ["periphery"]}})
+    periphery_members = g.db.db.users.count(
+        {"permanent_roles": {"$all": ["periphery"]}}
+    )
     unaccepted_members = g.db.db.users.count() - periphery_members - general_members
     return render_template(
         "home.html",
@@ -297,9 +314,7 @@ def home():
 @app.route("/rules")
 @register_breadcrumb(app, ".rules", "Rules")
 def rules():
-    return render_template(
-        "rules.html"
-    )
+    return render_template("rules.html")
 
 
 @app.route("/members")
@@ -362,7 +377,8 @@ def login(postlogin=None, scope="identify"):
         session["postlogin"] = {"endpoint": "home"}
     session["oauth2_state"] = state
     app.logger.debug(
-        f"login - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {authorization_url}")
+        f"login - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {authorization_url}"
+    )
     return redirect(authorization_url)
 
 
@@ -379,14 +395,15 @@ def login_callback():
             category="danger",
         )
         app.logger.debug(
-            f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('home')}")
+            f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('home')}"
+        )
         return redirect(url_for("home"))
     g.discord = make_session(state=session.get("oauth2_state"))
     token = g.discord.fetch_token(
         app.config["TOKEN_URL"],
         client_secret=app.config["OAUTH2_CLIENT_SECRET"],
         authorization_response=request.url,
-        headers={'Content-Type': "application/x-www-form-urlencoded"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     session["oauth2_token"] = token
     if "guilds.join" in token.scopes:
@@ -399,7 +416,8 @@ def login_callback():
         redirect_target = url_for("home")
     flash("Logged in successfully.", category="success")
     app.logger.debug(
-        f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
+        f"login_callback - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}"
+    )
     return redirect(redirect_target)
 
 
@@ -441,46 +459,58 @@ def join(postlogin=None):
             id="userclass",
         )
 
+    def greet_user():
+        if "Member" in g.user["permanent_roles"]:
+            announcechannel = "greeting"
+        elif "periphery" in g.user["permanent_roles"]:
+            announcechannel = "periphery_greeting"
+        user = nrdb.get_user(g.user["id"])
+        member_number = user["member_number"]
+        json_payload = {
+            "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"
+        }
+        send_to_known_channel(announcechannel, json_payload)
+
     def set_userclass_role():
         if "Member" in g.user["permanent_roles"]:
             userclass = "Member"
-            announcechannel = "greeting"
         elif "periphery" in g.user["permanent_roles"]:
             userclass = "periphery"
-            announcechannel = "periphery_greeting"
+
         if assign_role(userclass, g.user):
             flash(
                 "Your userclass role has been synchronized on Discord. Please check your Discord client to find your new channels.",
                 category="success",
             )
-            user = nrdb.get_user(g.user["id"])
-            member_number = user["member_number"]
-            json_payload = {
-                "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"
-            }
-            send_to_known_channel(announcechannel, json_payload)
+            greet_user()
         else:
-            flash("You're already joined to the server with a synchronized role.", category="warning")
+            # TODO: Not sure this is needed.
+            flash(
+                "You're already joined to the server with a synchronized role.",
+                category="warning",
+            )
 
     def joinform():
         form = JoinForm()
-        if form.userclass.data != 'Member':
+        if form.userclass.data != "Member":
             form.accept_member_rules.validators = []
         if form.validate_on_submit():
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
-            if form.userclass.data in ['Member', 'periphery']:
-                app.logger.debug(g.user)
-                app.logger.debug(form.userclass.data)
+            if form.userclass.data in ["Member", "periphery"]:
                 nrdb.upsert_member(g.user, [form.userclass.data])
                 app.logger.debug(
-                    f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                    f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}"
+                )
                 return redirect(url_for("join", postlogin=postlogin))
         # Ask where they want to join
         return render_template("join.html", form=form)
 
-    if "user" not in g or "guilds.join" not in session["oauth2_token"].get("scope",list()):
+    if "user" not in g or "guilds.join" not in session["oauth2_token"].get(
+        "scope", list()
+    ):
         app.logger.debug(
-            f"join - {currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to login() w/ guilds.join scope")
+            f"join - {currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to login() w/ guilds.join scope"
+        )
         return login(postlogin=postlogin, scope="identify guilds.join")
     # Check if the user is already a Member or periphery.
     elif "permanent_roles" not in g.user:
@@ -521,7 +551,8 @@ def join(postlogin=None):
         if "postlogin" in session:
             del session["postlogin"]
         app.logger.debug(
-            f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
+            f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}"
+        )
         return redirect(redirect_target)
     else:
         return joinform()
@@ -535,5 +566,6 @@ def logout():
     redirect_target = url_for("home")
     flash("Logged out successfully.", category="info")
     app.logger.debug(
-        f"logout - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
+        f"logout - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}"
+    )
     return redirect(redirect_target)
