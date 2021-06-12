@@ -220,10 +220,18 @@ def enrich_user(user):
 
 
 def join_user_to_guild(guildid, access_token, userid):
+    if "Member" in g.user["permanent_roles"]:
+        userclass = "Member"
+    elif "periphery" in g.user["permanent_roles"]:
+        userclass = "periphery"
+    role = nrdb.get_role_by_significance(app.config["GUILD_ID"], userclass)
+    roles = list()
+    roles.append(role["id"])
+
     r = requests.put(
         app.config["API_BASE_URL"] + "/guilds/" + guildid + "/members/" + userid,
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
-        json={"access_token": access_token},
+        json={"access_token": access_token, "roles": roles},
     )
     if r.status_code == 201:
         app.logger.info(
@@ -532,6 +540,7 @@ def join(postlogin=None):
         elif r.status_code == 201:
             # User was joined to the guild.
             set_userclass_role()
+            # TODO: Consider removing set_userclass_role() here. Should be covered in the join.
             flash(
                 "You've joined the Discord server! Please check your Discord client to find it in your server list.",
                 category="success",
