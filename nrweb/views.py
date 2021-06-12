@@ -462,11 +462,30 @@ def join(postlogin=None):
         else:
             flash("You're already joined to the server with a synchronized role.", category="warning")
 
+    def joinform():
+        form = JoinForm()
+        if form.userclass.data != 'Member':
+            form.accept_member_rules.validators = []
+        if form.validate_on_submit():
+            # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
+            if form.userclass.data in ['Member', 'periphery']:
+                app.logger.debug(g.user)
+                app.logger.debug(form.userclass.data)
+                nrdb.upsert_member(g.user, [form.userclass.data])
+                app.logger.debug(
+                    f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
+                return redirect(url_for("join", postlogin=postlogin))
+        # Ask where they want to join
+        return render_template("join.html", form=form)
+
     if "user" not in g or "guilds.join" not in session["oauth2_token"].get("scope",list()):
         app.logger.debug(
             f"join - {currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to login() w/ guilds.join scope")
         return login(postlogin=postlogin, scope="identify guilds.join")
     # Check if the user is already a Member or periphery.
+    elif "permanent_roles" not in g.user:
+        # No permanent roles have yet been assigned to the user.
+        return joinform()
     elif {"Member", "periphery"}.intersection(g.user["permanent_roles"]):
         # Join the user to the guild since we have permission and the user is an accepted member.
         r = join_user_to_guild(
@@ -505,18 +524,7 @@ def join(postlogin=None):
             f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {redirect_target}")
         return redirect(redirect_target)
     else:
-        form = JoinForm()
-        if form.userclass.data != 'Member':
-            form.accept_member_rules.validators = []
-        if form.validate_on_submit():
-            # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
-            if form.userclass.data in ['Member', 'periphery']:
-                nrdb.upsert_member(g.user, [form.userclass.data])
-                app.logger.debug(
-                    f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}")
-                return redirect(url_for("join", postlogin=postlogin))
-        # Ask where they want to join
-        return render_template("join.html", form=form)
+        return joinform()
 
 
 @app.route("/logout")

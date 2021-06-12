@@ -42,6 +42,8 @@ def get_channel_by_significance(guild_id, channel_significance):
 
 
 def upsert_member(user, role_significances):
+    if "permanent_roles" not in user:
+        user['permanent_roles'] = list()
     for role_significance in role_significances:
         if role_significance not in user['permanent_roles']:
             user['permanent_roles'].append(role_significance)
