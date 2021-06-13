@@ -545,8 +545,7 @@ def join(postlogin=None):
             set_userclass_role()
         elif r.status_code == 201:
             # User was joined to the guild.
-            set_userclass_role()
-            # TODO: Consider removing set_userclass_role() here. Should be covered in the join.
+            greet_user()
             flash(
                 "You've joined the Discord server! Please check your Discord client to find it in your server list.",
                 category="success",
