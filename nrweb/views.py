@@ -449,6 +449,7 @@ def join(postlogin=None):
             ("", ""),
             ("Member", "Enterprise networking, enterprise wifi, and VOIP"),
             ("periphery", "Home routers, wifi, servers, computers, and peripherals"),
+            ("recruiter", "Posting network engineering jobs I'm hoping to fill"),
             ("Member", "Network automation and DevOps"),
             (
                 "periphery",
