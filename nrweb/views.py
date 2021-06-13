@@ -220,13 +220,12 @@ def enrich_user(user):
 
 
 def join_user_to_guild(guildid, access_token, userid):
-    if "Member" in g.user["permanent_roles"]:
-        userclass = "Member"
-    elif "periphery" in g.user["permanent_roles"]:
-        userclass = "periphery"
-    role = nrdb.get_role_by_significance(app.config["GUILD_ID"], userclass)
     roles = list()
-    roles.append(role["id"])
+    for userclass in g.user["permanent_roles"]:
+        if userclass == "!eggs":
+            continue
+        role = nrdb.get_role_by_significance(app.config["GUILD_ID"], userclass)
+        roles.append(role["id"])
 
     r = requests.put(
         app.config["API_BASE_URL"] + "/guilds/" + guildid + "/members/" + userid,
@@ -310,11 +309,15 @@ def home():
     periphery_members = g.db.db.users.count(
         {"permanent_roles": {"$all": ["periphery"]}}
     )
-    unaccepted_members = g.db.db.users.count() - periphery_members - general_members
+    recruiter_members = g.db.db.users.count(
+        {"permanent_roles": {"$all": ["recruiter"]}}
+    )
+    unaccepted_members = g.db.db.users.count() - periphery_members - general_members - recruiter_members
     return render_template(
         "home.html",
         general_members=general_members,
         periphery_members=periphery_members,
+        recruiter_members=recruiter_members,
         unaccepted_members=unaccepted_members,
     )
 
@@ -449,6 +452,7 @@ def join(postlogin=None):
             ("", ""),
             ("Member", "Enterprise networking, enterprise wifi, and VOIP"),
             ("periphery", "Home routers, wifi, servers, computers, and peripherals"),
+            ("recruiter", "Posting network engineering jobs I'm hoping to fill"),
             ("Member", "Network automation and DevOps"),
             (
                 "periphery",
@@ -468,7 +472,7 @@ def join(postlogin=None):
         )
 
     def greet_user():
-        if "Member" in g.user["permanent_roles"]:
+        if not {"Member","recruiter"}.isdisjoint(g.user["permanent_roles"]):
             announcechannel = "greeting"
         elif "periphery" in g.user["permanent_roles"]:
             announcechannel = "periphery_greeting"
@@ -480,12 +484,14 @@ def join(postlogin=None):
         send_to_known_channel(announcechannel, json_payload)
 
     def set_userclass_role():
-        if "Member" in g.user["permanent_roles"]:
-            userclass = "Member"
-        elif "periphery" in g.user["permanent_roles"]:
-            userclass = "periphery"
+        assigned_role_successfully = False
+        for userclass in g.user["permanent_roles"]:
+            if userclass == "!eggs":
+                continue
+            if assign_role(userclass, g.user):
+                assigned_role_successfully = True
 
-        if assign_role(userclass, g.user):
+        if assigned_role_successfully:
             flash(
                 "Your userclass role has been synchronized on Discord. Please check your Discord client to find your new channels.",
                 category="success",
@@ -504,7 +510,7 @@ def join(postlogin=None):
             form.accept_member_rules.validators = []
         if form.validate_on_submit():
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
-            if form.userclass.data in ["Member", "periphery"]:
+            if form.userclass.data in ["Member", "periphery", "recruiter"]:
                 nrdb.upsert_member(g.user, [form.userclass.data])
                 app.logger.debug(
                     f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}"
@@ -524,7 +530,7 @@ def join(postlogin=None):
     elif "permanent_roles" not in g.user:
         # No permanent roles have yet been assigned to the user.
         return joinform()
-    elif {"Member", "periphery"}.intersection(g.user["permanent_roles"]):
+    elif {"Member", "periphery", "recruiter"}.intersection(g.user["permanent_roles"]):
         # Join the user to the guild since we have permission and the user is an accepted member.
         r = join_user_to_guild(
             app.config["GUILD_ID"],

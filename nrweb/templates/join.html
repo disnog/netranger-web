@@ -10,15 +10,25 @@
             $("#fullmember-info").hide();
             $("#fullmember-info").find('input').prop('required', false)
         }
+        if ($("#userclass")[0].value != 'recruiter') {
+            $("#recruiter-info").hide();
+        }
         $('#userclass').on('change', function () {
             if (this.value == 'Member') {
                 $("#periphery-info").hide("slow");
+                $("#recruiter-info").hide("slow");
                 $("#fullmember-info").find('input').prop('required', true)
                 $("#fullmember-info").show("slow");
             } else if (this.value == "periphery") {
                 $("#fullmember-info").find('input').prop('required', false)
                 $("#fullmember-info").hide("slow");
+                $("#recruiter-info").hide("slow");
                 $("#periphery-info").show("slow");
+            } else if (this.value == "recruiter") {
+                $("#fullmember-info").find('input').prop('required', false)
+                $("#fullmember-info").hide("slow");
+                $("#periphery-info").hide("slow");
+                $("#recruiter-info").show("slow");
             } else {
                 $("#fullmember-info").find('input').prop('required', false)
                 $("#fullmember-info").hide("slow");
@@ -131,6 +141,35 @@
                             </div>
                         </div>
                     </div>
+                    <p class="card-text">If this doesn't seem right and you are or are aspiring to become a network
+                        engineering professional, please edit your choice above.</p>
+                </div>
+            </div>
+            <div class="card" id="recruiter-info">
+                <div class="card-body">
+                    <h5 class="card-title">User Classification: Recruiter</h5>
+                    <p class="card-text">Based on your intended use of the server, we think you're best suited as a
+                        recruiter. You'll have access to channels with topics like:</p>
+                    <div class="card-columns">
+                        <div class="card  text-white bg-dark">
+                            <div class="card-body">
+                                <p class="card-text">Job Posting</p>
+                            </div>
+                        </div>
+                        <div class="card  text-white bg-dark">
+                            <div class="card-body">
+                                <p class="card-text">General Networking Discussion</p>
+                            </div>
+                        </div>
+                        <div class="card  text-white bg-dark">
+                            <div class="card-body">
+                                <p class="card-text">Off Topic Discussion</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="card-text">Please note that the Recruiter user class is for recruiters who are looking
+                        for an audience to promote network engineering related jobs. This server does not cater to
+                        IT professions other than those which require a specific network engineering skill set.</p>
                     <p class="card-text">If this doesn't seem right and you are or are aspiring to become a network
                         engineering professional, please edit your choice above.</p>
                 </div>
