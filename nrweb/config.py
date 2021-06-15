@@ -38,7 +38,7 @@ AUTHORIZATION_BASE_URL = API_BASE_URL + "/oauth2/authorize"
 TOKEN_URL = API_BASE_URL + "/oauth2/token"
 MONGO_USER = quote_plus(os.environ.get("MONGO_USER"))
 MONGO_PASS = quote_plus(os.environ.get("MONGO_PASS"))
-MONGO_HOST = os.environ.get("MONGO_HOST","localhost:27017")
-MONGO_DB = os.environ.get("MONGO_DB","network_ranger")
-MONGO_AUTHSOURCE = os.environ.get("MONGO_AUTHSOURCE","admin")
+MONGO_HOST = os.environ.get("MONGO_HOST", "localhost:27017")
+MONGO_DB = os.environ.get("MONGO_DB", "network_ranger")
+MONGO_AUTHSOURCE = os.environ.get("MONGO_AUTHSOURCE", "admin")
 MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}/{MONGO_DB}?authSource={MONGO_AUTHSOURCE}"
