@@ -20,12 +20,12 @@ import os
 from urllib.parse import quote_plus
 
 OAUTH2_REDIRECT_URI = os.environ.get(
-    "OAUTH2_REDIRECT_URI", "http://localhost:5000/login_callback"
+    "OAUTH2_REDIRECT_URI", False
 )
 NRWEB_ENVIRONMENT = os.environ.get("NRWEB_ENVIRONMENT", "prod").lower()
-if "http://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "dev":
+if "http://" in str(OAUTH2_REDIRECT_URI) and NRWEB_ENVIRONMENT == "dev":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
-elif "https://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "prod":
+elif (not OAUTH2_REDIRECT_URI or "https://" in str(OAUTH2_REDIRECT_URI)) and NRWEB_ENVIRONMENT == "prod":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
 
 OAUTH2_CLIENT_ID = os.environ["OAUTH2_CLIENT_ID"]
