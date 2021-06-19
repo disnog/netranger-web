@@ -56,7 +56,7 @@ def make_session(token=None, state=None, scope=None):
         token=token,
         state=state,
         scope=scope,
-        redirect_uri=app.config["OAUTH2_REDIRECT_URI"],
+        redirect_uri=app.config["OAUTH2_REDIRECT_URI"] or "https://"+request.host+"/login_callback",
         auto_refresh_kwargs={
             "client_id": app.config["OAUTH2_CLIENT_ID"],
             "client_secret": app.config["OAUTH2_CLIENT_SECRET"],
