@@ -338,6 +338,10 @@ def home():
 def rules():
     return render_template("rules.html")
 
+@app.route("/events")
+@register_breadcrumb(app, ".events", "Events")
+def events():
+    return render_template("events.html")
 
 @app.route("/members")
 @has_role(role_significance="Member", fail_action="403")
