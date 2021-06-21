@@ -56,7 +56,7 @@ def make_session(token=None, state=None, scope=None):
         token=token,
         state=state,
         scope=scope,
-        redirect_uri=app.config["OAUTH2_REDIRECT_URI"],
+        redirect_uri=app.config["OAUTH2_REDIRECT_URI"] or "https://"+request.host+"/login_callback",
         auto_refresh_kwargs={
             "client_id": app.config["OAUTH2_CLIENT_ID"],
             "client_secret": app.config["OAUTH2_CLIENT_SECRET"],
@@ -69,12 +69,12 @@ def make_session(token=None, state=None, scope=None):
 @app.before_request
 def do_before_request():
     app.logger.debug("do_before_request - path %s", request.path)
-    g.db = PyMongo(app)
+    g.mongo = PyMongo(app)
     if "oauth2_token" in session:
         g.discord = make_session(token=session.get("oauth2_token"))
         g.user = g.discord.get(app.config["API_BASE_URL"] + "/users/@me").json()
-        g.guild = nrdb.get_guild(app.config["GUILD_ID"])
-        user_db_info = g.db.db.users.find_one(
+        g.guild = nrdb.get_guild(g.mongo.db, app.config["GUILD_ID"])
+        user_db_info = g.mongo.db.users.find_one(
             {"_id": int(g.user["id"])},
             {"permanent_roles": True, "member_number": True, "first_joined_at": True},
         )
@@ -224,7 +224,9 @@ def join_user_to_guild(guildid, access_token, userid):
     for userclass in g.user["permanent_roles"]:
         if userclass == "!eggs":
             continue
-        role = nrdb.get_role_by_significance(app.config["GUILD_ID"], userclass)
+        role = nrdb.get_role_by_significance(
+            g.mongo.db, app.config["GUILD_ID"], userclass
+        )
         roles.append(role["id"])
 
     r = requests.put(
@@ -248,7 +250,9 @@ def join_user_to_guild(guildid, access_token, userid):
 
 
 def send_to_known_channel(significance, json_payload):
-    channel = nrdb.get_channel_by_significance(app.config["GUILD_ID"], significance)
+    channel = nrdb.get_channel_by_significance(
+        g.mongo.db, app.config["GUILD_ID"], significance
+    )
     r = requests.post(
         app.config["API_BASE_URL"] + "/channels/" + channel["id"] + "/webhooks",
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
@@ -277,7 +281,9 @@ def send_to_known_channel(significance, json_payload):
 
 def assign_role(significance, member):
     user = enrich_member(member)
-    role = nrdb.get_role_by_significance(app.config["GUILD_ID"], significance)
+    role = nrdb.get_role_by_significance(
+        g.mongo.db, app.config["GUILD_ID"], significance
+    )
     if role["id"] in user["roles"]:
         return False
     else:
@@ -305,14 +311,19 @@ def utctime(s):
 @app.route("/home")
 @register_breadcrumb(app, ".", "Home")
 def home():
-    general_members = g.db.db.users.count({"permanent_roles": {"$all": ["Member"]}})
-    periphery_members = g.db.db.users.count(
+    general_members = g.mongo.db.users.count({"permanent_roles": {"$all": ["Member"]}})
+    periphery_members = g.mongo.db.users.count(
         {"permanent_roles": {"$all": ["periphery"]}}
     )
-    recruiter_members = g.db.db.users.count(
+    recruiter_members = g.mongo.db.users.count(
         {"permanent_roles": {"$all": ["recruiter"]}}
     )
-    unaccepted_members = g.db.db.users.count() - periphery_members - general_members - recruiter_members
+    unaccepted_members = (
+        g.mongo.db.users.count()
+        - periphery_members
+        - general_members
+        - recruiter_members
+    )
     return render_template(
         "home.html",
         general_members=general_members,
@@ -332,7 +343,7 @@ def rules():
 @has_role(role_significance="Member", fail_action="403")
 @register_breadcrumb(app, ".members", "Members")
 def members():
-    memberlist = g.db.db.users.find({"member_number": {"$exists": True}})
+    memberlist = g.mongo.db.users.find({"member_number": {"$exists": True}})
     return render_template("members.html", memberlist=memberlist)
 
 
@@ -341,7 +352,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
         userid = request.view_args["userid"]
     else:
         userid = int(g.user["id"])
-    user = g.db.db.users.find_one(
+    user = g.mongo.db.users.find_one(
         {"_id": userid}, {"name": True, "discriminator": True}
     )
     return [
@@ -358,7 +369,7 @@ def userid_breadcrumb_constructor(*args, **kwargs):
     app, ".members.user_id", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
 def myprofile():
-    user = g.db.db.users.find_one({"_id": int(g.user["id"])})
+    user = g.mongo.db.users.find_one({"_id": int(g.user["id"])})
     user = enrich_user(user)
     return render_template("profile.html", user=user)
 
@@ -369,7 +380,7 @@ def myprofile():
     app, ".members.user_id", "", dynamic_list_constructor=userid_breadcrumb_constructor
 )
 def profile(userid):
-    user = g.db.db.users.find_one({"_id": userid})
+    user = g.mongo.db.users.find_one({"_id": userid})
     user = enrich_user(user)
     return render_template("profile.html", user=user)
 
@@ -472,11 +483,11 @@ def join(postlogin=None):
         )
 
     def greet_user():
-        if not {"Member","recruiter"}.isdisjoint(g.user["permanent_roles"]):
+        if not {"Member", "recruiter"}.isdisjoint(g.user["permanent_roles"]):
             announcechannel = "greeting"
         elif "periphery" in g.user["permanent_roles"]:
             announcechannel = "periphery_greeting"
-        user = nrdb.get_user(g.user["id"])
+        user = nrdb.get_user(g.mongo.db, g.user["id"])
         member_number = user["member_number"]
         json_payload = {
             "content": f"Welcome <@{g.user['id']}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"
@@ -511,7 +522,7 @@ def join(postlogin=None):
         if form.validate_on_submit():
             # The user has completed the form successfully. Now we need to add them to the appropriate role in the DB.
             if form.userclass.data in ["Member", "periphery", "recruiter"]:
-                nrdb.upsert_member(g.user, [form.userclass.data])
+                nrdb.upsert_member(g.mongo.db, g.user, [form.userclass.data])
                 app.logger.debug(
                     f"join - REDIRECT@{currentframe().f_code.co_filename}:{currentframe().f_lineno} - {request.path} to {url_for('join', postlogin=postlogin)}"
                 )
