@@ -20,12 +20,12 @@ import os
 from urllib.parse import quote_plus
 
 OAUTH2_REDIRECT_URI = os.environ.get(
-    "OAUTH2_REDIRECT_URI", "http://localhost:5000/login_callback"
+    "OAUTH2_REDIRECT_URI", False
 )
 NRWEB_ENVIRONMENT = os.environ.get("NRWEB_ENVIRONMENT", "prod").lower()
-if "http://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "dev":
+if "http://" in str(OAUTH2_REDIRECT_URI) and NRWEB_ENVIRONMENT == "dev":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
-elif "https://" in OAUTH2_REDIRECT_URI and NRWEB_ENVIRONMENT == "prod":
+elif (not OAUTH2_REDIRECT_URI or "https://" in str(OAUTH2_REDIRECT_URI)) and NRWEB_ENVIRONMENT == "prod":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "true"
 
 OAUTH2_CLIENT_ID = os.environ["OAUTH2_CLIENT_ID"]
@@ -38,7 +38,7 @@ AUTHORIZATION_BASE_URL = API_BASE_URL + "/oauth2/authorize"
 TOKEN_URL = API_BASE_URL + "/oauth2/token"
 MONGO_USER = quote_plus(os.environ.get("MONGO_USER"))
 MONGO_PASS = quote_plus(os.environ.get("MONGO_PASS"))
-MONGO_HOST = os.environ.get("MONGO_HOST","localhost:27017")
-MONGO_DB = os.environ.get("MONGO_DB","network_ranger")
-MONGO_AUTHSOURCE = os.environ.get("MONGO_AUTHSOURCE","admin")
+MONGO_HOST = os.environ.get("MONGO_HOST", "localhost:27017")
+MONGO_DB = os.environ.get("MONGO_DB", "network_ranger")
+MONGO_AUTHSOURCE = os.environ.get("MONGO_AUTHSOURCE", "admin")
 MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}/{MONGO_DB}?authSource={MONGO_AUTHSOURCE}"
