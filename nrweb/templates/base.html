@@ -45,6 +45,11 @@
                         class="sr-only"> (current)</span>{%
                     endif %}</a>
             </li>
+            <li class="nav-item{% if request.endpoint in ['events'] %} active{% endif %}">
+                <a class="nav-link" href="/events">Events{% if request.endpoint in ['events'] %}<span
+                        class="sr-only"> (current)</span>{%
+                    endif %}</a>
+            </li>
             <li class="nav-item{% if request.endpoint in ['rules'] %} active{% endif %}">
                 <a class="nav-link" href="/rules">Rules{% if request.endpoint in ['rules'] %}<span
                         class="sr-only"> (current)</span>{%
