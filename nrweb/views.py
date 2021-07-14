@@ -338,6 +338,10 @@ def home():
 def rules():
     return render_template("rules.html")
 
+@app.route("/linkedin")
+def linkedin():
+    return redirect("https://www.linkedin.com/groups/9073282",303)
+
 @app.route("/events")
 @register_breadcrumb(app, ".events", "Events")
 def events():
