@@ -342,6 +342,10 @@ def rules():
 def linkedin():
     return redirect("https://www.linkedin.com/groups/9073282",303)
 
+@app.route("/survey")
+def survey():
+    return redirect("https://forms.gle/73PdMU1uDoEhACN66",303)
+
 @app.route("/events")
 @register_breadcrumb(app, ".events", "Events")
 def events():
