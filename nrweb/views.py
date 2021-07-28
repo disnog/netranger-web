@@ -256,7 +256,7 @@ def send_to_known_channel(significance, json_payload):
     r = requests.post(
         app.config["API_BASE_URL"] + "/channels/" + channel["id"] + "/webhooks",
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
-        json={"name": "https://neteng.xyz"},
+        json={"name": "DisNOG.org"},
     )
     r.raise_for_status()
     webhook = r.json()
