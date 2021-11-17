@@ -256,7 +256,7 @@ def send_to_known_channel(significance, json_payload):
     r = requests.post(
         app.config["API_BASE_URL"] + "/channels/" + channel["id"] + "/webhooks",
         headers={"Authorization": "Bot " + app.config["BOT_TOKEN"]},
-        json={"name": "https://neteng.xyz"},
+        json={"name": "DisNOG.org"},
     )
     r.raise_for_status()
     webhook = r.json()
@@ -337,6 +337,14 @@ def home():
 @register_breadcrumb(app, ".rules", "Rules")
 def rules():
     return render_template("rules.html")
+
+@app.route("/linkedin")
+def linkedin():
+    return redirect("https://www.linkedin.com/groups/9073282",303)
+
+@app.route("/survey")
+def survey():
+    return redirect("https://forms.gle/73PdMU1uDoEhACN66",303)
 
 @app.route("/events")
 @register_breadcrumb(app, ".events", "Events")
