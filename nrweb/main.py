@@ -18,11 +18,11 @@
 
 from __future__ import annotations
 
-import asyncio
+# import asyncio  # unused
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Optional
 
 from fastapi import FastAPI, Request, Response, Form, Depends, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
@@ -31,8 +31,8 @@ from fastapi.templating import Jinja2Templates
 
 from netranger_db import Database
 
-from .config import get_settings, Settings
-from .discord import DiscordOAuth, DiscordAPI, DiscordUser
+from .config import get_settings
+from .discord import DiscordOAuth, DiscordAPI
 from .session import SessionManager, SessionData, flash, get_flashed_messages
 
 
@@ -135,7 +135,6 @@ def render(
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, session: SessionData = Depends(get_session)):
     """Home page with member stats."""
-    settings = get_settings()
     
     member_count = await db.users.count_by_role("Member")
     periphery_count = await db.users.count_by_role("periphery")
@@ -214,7 +213,6 @@ async def login(
     session: SessionData = Depends(get_session),
 ):
     """Start OAuth2 login flow."""
-    settings = get_settings()
     redirect_uri = settings.oauth2_redirect_uri or str(request.url_for("login_callback"))
     
     oauth = DiscordOAuth(redirect_uri=redirect_uri)
@@ -247,7 +245,6 @@ async def login_callback(
         flash(session, "Invalid state. Please try again.", "danger")
         return redirect_with_session("/", session)
     
-    settings = get_settings()
     redirect_uri = settings.oauth2_redirect_uri or str(request.url_for("login_callback"))
     
     try:
@@ -300,15 +297,14 @@ async def join(
     session: SessionData = Depends(get_session),
 ):
     """Join flow - accept rules and select userclass."""
-    settings = get_settings()
     
     # Need to be logged in
     if not session.is_logged_in:
-        return RedirectResponse(f"/login?scope=identify%20guilds.join&next=/join")
+        return RedirectResponse('/login?scope=identify%20guilds.join&next=/join')
     
     # Need guilds.join scope
     if not session.has_guilds_join_scope:
-        return RedirectResponse(f"/login?scope=identify%20guilds.join&next=/join")
+        return RedirectResponse('/login?scope=identify%20guilds.join&next=/join')
     
     # Get or create user in DB
     user = await db.users.get(int(session.user_id))
@@ -398,7 +394,6 @@ async def join(
 
 async def send_greeting(user_id: str, user) -> None:
     """Send greeting message to appropriate channel."""
-    settings = get_settings()
     guild = await db.guilds.get(settings.guild_id)
     if not guild:
         return
