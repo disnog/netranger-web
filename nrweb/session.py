@@ -20,13 +20,12 @@ from __future__ import annotations
 
 # import json  # unused
 from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import Request, Response
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from .config import get_settings
-from .discord import DiscordToken
 
 
 @dataclass

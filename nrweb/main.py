@@ -213,6 +213,7 @@ async def login(
     session: SessionData = Depends(get_session),
 ):
     """Start OAuth2 login flow."""
+    settings = get_settings()
     redirect_uri = settings.oauth2_redirect_uri or str(request.url_for("login_callback"))
     
     oauth = DiscordOAuth(redirect_uri=redirect_uri)
@@ -233,6 +234,7 @@ async def login_callback(
     session: SessionData = Depends(get_session),
 ):
     """OAuth2 callback."""
+    settings = get_settings()
     if error:
         flash(session, f"Login failed: {error}", "danger")
         return redirect_with_session("/", session)
@@ -297,6 +299,7 @@ async def join(
     session: SessionData = Depends(get_session),
 ):
     """Join flow - accept rules and select userclass."""
+    settings = get_settings()
     
     # Need to be logged in
     if not session.is_logged_in:
@@ -394,6 +397,7 @@ async def join(
 
 async def send_greeting(user_id: str, user) -> None:
     """Send greeting message to appropriate channel."""
+    settings = get_settings()
     guild = await db.guilds.get(settings.guild_id)
     if not guild:
         return
