@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Network Ranger",
-    description="Web portal for the Networking Discord server",
+    description="Web portal for the DisNOG server",
     lifespan=lifespan,
 )
 

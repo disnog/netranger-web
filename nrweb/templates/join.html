@@ -1,9 +1,14 @@
+<!--
+  join.html
+  Copyright (C) 2020-2026 DisNOG.org
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 {% extends "base.html" %}
 
 {% block title %}Join - Network Ranger{% endblock %}
 
 {% block content %}
-<h1>Join Networking Discord</h1>
+<h1>Join DisNOG</h1>
 
 {% if user and user.permanent_roles and ('Member' in user.permanent_roles or 'periphery' in user.permanent_roles or 'recruiter' in user.permanent_roles) %}
 <div class="alert alert-info">
