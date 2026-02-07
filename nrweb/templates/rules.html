@@ -1,16 +1,34 @@
 {% extends "base.html" %}
-{% block pagetitle %}Rules{% endblock %}
+
+{% block title %}Rules - Network Ranger{% endblock %}
+
 {% block content %}
-<div class="card">
+<h1>Server Rules</h1>
+
+<div class="card mb-4">
+    <div class="card-header">General Rules</div>
     <div class="card-body">
-        <h5 class="card-title">General Rules</h5>
-        {% include "general-rules.html" %}
+        <ol>
+            <li>Be respectful to all members.</li>
+            <li>No spam, advertising, or self-promotion without permission.</li>
+            <li>Keep discussions relevant to networking topics.</li>
+            <li>No NSFW content.</li>
+            <li>Follow Discord's Terms of Service.</li>
+        </ol>
     </div>
 </div>
-<div class="card">
+
+<div class="card mb-4">
+    <div class="card-header">Member Rules</div>
     <div class="card-body">
-        <h5 class="card-title">Full Member Rules</h5>
-        {% include "member-rules.html" %}
+        <p>Full members agree to additional guidelines:</p>
+        <ol>
+            <li>Contribute positively to discussions.</li>
+            <li>Help newcomers when possible.</li>
+            <li>Report rule violations to moderators.</li>
+        </ol>
     </div>
 </div>
+
+<a href="/join" class="btn btn-primary">Accept Rules &amp; Join</a>
 {% endblock %}

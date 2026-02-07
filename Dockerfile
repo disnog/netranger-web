@@ -1,10 +1,14 @@
-FROM python:3.8 as base
-WORKDIR /usr/src/app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+FROM python:3.12-slim
 
-FROM base
-COPY nrweb ./nrweb
+WORKDIR /app
 
-EXPOSE 5000
-ENTRYPOINT [ "gunicorn", "-w 4", "-b 0.0.0.0:5000", "nrweb:app" ]
+# Install dependencies
+COPY pyproject.toml README.md ./
+RUN pip install --no-cache-dir .
+
+# Copy application
+COPY nrweb/ ./nrweb/
+
+# Run
+EXPOSE 8000
+CMD ["uvicorn", "nrweb.main:app", "--host", "0.0.0.0", "--port", "8000"]

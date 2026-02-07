@@ -1,4 +1,0 @@
-[submodule "nrweb/nrdb"]
-	path = nrweb/nrdb
-	url = https://github.com/netdiscord/nrdb.git
-	branch = main
