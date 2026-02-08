@@ -18,6 +18,9 @@
 
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 # import asyncio  # unused
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -425,12 +428,18 @@ async def send_greeting(user_id: str, user) -> None:
     member_number = user.member_number or "?"
     content = f"Welcome <@{user_id}>, member #{member_number}! We're happy to have you. Please feel free to take a moment to introduce yourself!"
     
+    webhook = None
     try:
         webhook = await discord_api.create_webhook(channel.channel_id, "DisNOG.org")
         await discord_api.execute_webhook(webhook["id"], webhook["token"], content)
-        await discord_api.delete_webhook(webhook["id"], webhook["token"])
-    except Exception:
-        pass  # Greeting is nice-to-have
+    except Exception as e:
+        logger.warning(f"Failed to send greeting: {e}")
+    finally:
+        if webhook:
+            try:
+                await discord_api.delete_webhook(webhook["id"], webhook["token"])
+            except Exception as e:
+                logger.warning(f"Failed to delete webhook: {e}")
 
 
 # Redirects for legacy URLs
