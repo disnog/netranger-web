@@ -17,6 +17,7 @@
 """Session management using signed cookies."""
 
 from __future__ import annotations
+import secrets
 
 # import json  # unused
 from dataclasses import asdict, dataclass
@@ -40,6 +41,7 @@ class SessionData:
     token_scope: Optional[str] = None
     oauth_state: Optional[str] = None
     post_login_url: Optional[str] = None
+    csrf_token: Optional[str] = None
     flash_messages: list[dict] = None
     
     def __post_init__(self):
@@ -111,3 +113,17 @@ def get_flashed_messages(session: SessionData) -> list[dict]:
     messages = session.flash_messages.copy()
     session.flash_messages.clear()
     return messages
+
+
+def generate_csrf_token(session: SessionData) -> str:
+    """Generate a new CSRF token for the session."""
+    token = secrets.token_urlsafe(32)
+    session.csrf_token = token
+    return token
+
+
+def validate_csrf_token(session: SessionData, token: str) -> bool:
+    """Validate a CSRF token against the session."""
+    if not session.csrf_token:
+        return False
+    return secrets.compare_digest(session.csrf_token, token)

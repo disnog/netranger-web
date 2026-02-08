@@ -39,7 +39,8 @@ class DiscordUser:
     
     @property
     def display_name(self) -> str:
-        if self.discriminator and self.discriminator != "0":
+        # Handle Discord's new username system (no discriminator) vs legacy
+        if self.discriminator and self.discriminator not in ("0", ""):
             return f"{self.username}#{self.discriminator}"
         return self.username
     
@@ -131,7 +132,7 @@ class DiscordOAuth:
         return DiscordUser(
             id=data["id"],
             username=data["username"],
-            discriminator=data.get("discriminator", "0"),
+            discriminator=data.get("discriminator"),  # None for new system
             avatar=data.get("avatar"),
             email=data.get("email"),
         )

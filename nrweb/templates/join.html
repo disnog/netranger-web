@@ -15,12 +15,14 @@
     You're already a member! Click the button below to join or sync your roles on the Discord server.
 </div>
 <form method="post">
+{% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endif %}
     <button type="submit" class="btn btn-primary btn-lg">Join Discord Server</button>
 </form>
 {% else %}
 <p>Please read and accept the rules, then select what brings you here.</p>
 
 <form method="post">
+{% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endif %}
     <div class="card mb-4">
         <div class="card-header">General Rules</div>
         <div class="card-body">

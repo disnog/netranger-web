@@ -33,7 +33,7 @@ from netranger_db import Database
 
 from .config import get_settings
 from .discord import DiscordOAuth, DiscordAPI
-from .session import SessionManager, SessionData, flash, get_flashed_messages
+from .session import SessionManager, SessionData, flash, get_flashed_messages, generate_csrf_token, validate_csrf_token
 
 
 # Module-level state
@@ -296,6 +296,7 @@ async def join(
     userclass: Optional[str] = Form(None),
     accept_general_rules: Optional[bool] = Form(False),
     accept_member_rules: Optional[bool] = Form(False),
+    csrf_token: Optional[str] = Form(None),
     session: SessionData = Depends(get_session),
 ):
     """Join flow - accept rules and select userclass."""
@@ -363,6 +364,11 @@ async def join(
     
     # Handle form submission
     if request.method == "POST" and userclass:
+        # CSRF validation
+        if not csrf_token or not validate_csrf_token(session, csrf_token):
+            flash(session, "Invalid or missing CSRF token. Please try again.", "danger")
+            return redirect_with_session("/join", session)
+        
         if not accept_general_rules:
             flash(session, "You must accept the general rules.", "warning")
         elif userclass == "Member" and not accept_member_rules:
@@ -389,9 +395,13 @@ async def join(
         ("Member", "I'm a student studying for enterprise or service provider networking"),
     ]
     
+    # Generate CSRF token for the form
+    csrf = generate_csrf_token(session)
+    
     return render(request, "join.html", session, {
         "userclass_choices": userclass_choices,
         "user": user,
+        "csrf_token": csrf,
     })
 
 
