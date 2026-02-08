@@ -19,7 +19,7 @@ dependencies = [
     "python-multipart>=0.0.6",
     "httpx>=0.26.0",
     "itsdangerous>=2.1.0",
-    "netranger-db @ git+https://github.com/isfarathu/netranger-db.git@v2-mariadb-rewrite",
+    "netranger-db @ git+https://github.com/disnog/netranger-db.git@v2dev",
 ]
 
 [project.optional-dependencies]
