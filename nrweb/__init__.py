@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
-# nrweb - __init__.py
-# Copyright (C) 2020  Networking Discord
+# __init__.py
+# Copyright (C) 2020-2026 DisNOG.org
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -16,11 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import Flask
-from flask_breadcrumbs import Breadcrumbs
+"""Network Ranger web portal."""
 
-app = Flask(__name__)
-app.config.from_pyfile("config.py")
-Breadcrumbs(app=app)
-
-from nrweb import views
+__version__ = "2.0.0"

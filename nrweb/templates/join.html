@@ -1,193 +1,87 @@
+<!--
+  join.html
+  Copyright (C) 2020-2026 DisNOG.org
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 {% extends "base.html" %}
-{% block pagetitle %}Join{% endblock %}
-{% block content %}
-<script>
-    $(document).ready(function () {
-        if ($("#userclass")[0].value != 'periphery') {
-            $("#periphery-info").hide();
-        }
-        if ($("#userclass")[0].value != 'Member') {
-            $("#fullmember-info").hide();
-            $("#fullmember-info").find('input').prop('required', false)
-        }
-        if ($("#userclass")[0].value != 'recruiter') {
-            $("#recruiter-info").hide();
-        }
-        $('#userclass').on('change', function () {
-            if (this.value == 'Member') {
-                $("#periphery-info").hide("slow");
-                $("#recruiter-info").hide("slow");
-                $("#fullmember-info").find('input').prop('required', true)
-                $("#fullmember-info").show("slow");
-            } else if (this.value == "periphery") {
-                $("#fullmember-info").find('input').prop('required', false)
-                $("#fullmember-info").hide("slow");
-                $("#recruiter-info").hide("slow");
-                $("#periphery-info").show("slow");
-            } else if (this.value == "recruiter") {
-                $("#fullmember-info").find('input').prop('required', false)
-                $("#fullmember-info").hide("slow");
-                $("#periphery-info").hide("slow");
-                $("#recruiter-info").show("slow");
-            } else {
-                $("#fullmember-info").find('input').prop('required', false)
-                $("#fullmember-info").hide("slow");
-                $("#periphery-info").hide("slow");
-            }
-        });
-    });
-</script>
-<form method="post">
-    {{ form.csrf_token }}
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">Read the rules</h5>
-            <p class="card-text">We're thrilled that you'll be joining us! First, we just would like to ask that you <b>[actually]
-                read</b> and agree to the rules.</p>
-            {% include "general-rules.html" %}
-        </div>
-        <div class="card-body">
-            <div class="form-check">
-                {{form.accept_general_rules(class_="form-check-input")}}
-                {{form.accept_general_rules.label(class_="form-check-label")}}
-            </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">What type of user are you?</h5>
-            <p class="card-text">We have different types of users. To sort you into the right class, please select what
-                you'd like to talk about on the server.</p>
 
-            <div class="form-group">
-                {{form.userclass.label}}
-                {{form.userclass(class_="form-control")}}
-            </div>
-            <div class="card" id="fullmember-info">
-                <div class="card-body">
-                    <h5 class="card-title">User Classification: Full Membership</h5>
-                    <p class="card-text">Based on your intended use of the server, we think you're best suited as a full
-                        member. You'll have access to channels with topics like:</p>
-                    <div class="card-columns">
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Service Provider Networking</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Enterprise Routing and Switching</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Network Automation</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Network Security</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Rants</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Jobs</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Education</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Home Labs</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Off Topic Discussion</p>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="card-text">As such, you will need to agree to the additional rules below. If these do
-                        not
-                        make
-                        sense for you, please select another use case.</p>
-                    {% include "member-rules.html" %}
-                </div>
-                <div class="card-body">
-                    <div class="form-check">
-                        {{form.accept_member_rules(class_="form-check-input")}}
-                        {{form.accept_member_rules.label(class_="form-check-label")}}
-                    </div>
-                </div>
-            </div>
-            <div class="card" id="periphery-info">
-                <div class="card-body">
-                    <h5 class="card-title">User Classification: Periphery Membership</h5>
-                    <p class="card-text">Based on your intended use of the server, we think you're best suited as a
-                        periphery
-                        member. You'll have access to channels with topics like:</p>
-                    <div class="card-columns">
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">General IT, Non-Network Coding, and Server Administration</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Home Networking, Residential Internet and WiFi</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Off Topic Discussion</p>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="card-text">If this doesn't seem right and you are or are aspiring to become a network
-                        engineering professional, please edit your choice above.</p>
-                </div>
-            </div>
-            <div class="card" id="recruiter-info">
-                <div class="card-body">
-                    <h5 class="card-title">User Classification: Recruiter</h5>
-                    <p class="card-text">Based on your intended use of the server, we think you're best suited as a
-                        recruiter. You'll have access to channels with topics like:</p>
-                    <div class="card-columns">
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Job Posting</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">General Networking Discussion</p>
-                            </div>
-                        </div>
-                        <div class="card  text-white bg-dark">
-                            <div class="card-body">
-                                <p class="card-text">Off Topic Discussion</p>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="card-text">Please note that the Recruiter user class is for recruiters who are looking
-                        for an audience to promote network engineering related jobs. This server does not cater to
-                        IT professions other than those which require a specific network engineering skill set.</p>
-                    <p class="card-text">If this doesn't seem right and you are or are aspiring to become a network
-                        engineering professional, please edit your choice above.</p>
-                </div>
-            </div>
-            <div class="text-center">
-                <button type="submit" class="btn btn-primary">Join</button>
+{% block title %}Join - Network Ranger{% endblock %}
+
+{% block content %}
+<h1>Join DisNOG</h1>
+
+{% if user and user.permanent_roles and ('Member' in user.permanent_roles or 'periphery' in user.permanent_roles or 'recruiter' in user.permanent_roles) %}
+<div class="alert alert-info">
+    You're already a member! Click the button below to join or sync your roles on the Discord server.
+</div>
+<form method="post">
+{% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endif %}
+    <button type="submit" class="btn btn-primary btn-lg">Join Discord Server</button>
+</form>
+{% else %}
+<p>Please read and accept the rules, then select what brings you here.</p>
+
+<form method="post">
+{% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endif %}
+    <div class="card mb-4">
+        <div class="card-header">General Rules</div>
+        <div class="card-body">
+            <ol>
+                <li>Be respectful to all members.</li>
+                <li>No spam, advertising, or self-promotion.</li>
+                <li>Keep discussions relevant.</li>
+            </ol>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="accept_general_rules" id="accept_general_rules" value="true" required>
+                <label class="form-check-label" for="accept_general_rules">
+                    I have read and accept the general rules.
+                </label>
             </div>
         </div>
     </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">What brings you here?</div>
+        <div class="card-body">
+            {% for value, label in userclass_choices %}
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="userclass" id="userclass_{{ loop.index }}" value="{{ value }}" required>
+                <label class="form-check-label" for="userclass_{{ loop.index }}">{{ label }}</label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="card mb-4" id="member_rules_card" style="display: none;">
+        <div class="card-header">Additional Member Rules</div>
+        <div class="card-body">
+            <p>Full members agree to contribute positively and help others.</p>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="accept_member_rules" id="accept_member_rules" value="true">
+                <label class="form-check-label" for="accept_member_rules">
+                    I accept the additional member rules.
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <button type="submit" class="btn btn-primary btn-lg">Join</button>
 </form>
+
+<script>
+document.querySelectorAll('input[name="userclass"]').forEach(el => {
+    el.addEventListener('change', function() {
+        const card = document.getElementById('member_rules_card');
+        const checkbox = document.getElementById('accept_member_rules');
+        if (this.value === 'Member') {
+            card.style.display = 'block';
+            checkbox.required = true;
+        } else {
+            card.style.display = 'none';
+            checkbox.required = false;
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}
