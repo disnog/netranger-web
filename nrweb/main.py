@@ -442,3 +442,49 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# Legacy URL redirects for backward compatibility
+from urllib.parse import unquote
+import json
+
+
+@app.get("/login/{path:path}")
+async def login_legacy_redirect(
+    request: Request,
+    path: str,
+):
+    """Handle legacy /login/<postlogin> URLs.
+    
+    Redirects old /login/<postlogin> (where postlogin was either a simple path
+    or URL-encoded JSON like {"endpoint": "join"}) to /login?next=<path>
+    """
+    try:
+        # Try to decode JSON-encoded path (old format: %7B%22endpoint%22...%7D)
+        decoded = unquote(path)
+        data = json.loads(decoded)
+        next_url = "/" + data.get("endpoint", "")
+    except (json.JSONDecodeError, ValueError):
+        # Plain path like "join" or "home"
+        next_url = f"/{path}"
+    
+    return RedirectResponse(url=f"/login?next={next_url}", status_code=301)
+
+
+@app.get("/join/{path:path}")
+async def join_legacy_redirect(
+    request: Request,
+    path: str,
+):
+    """Handle legacy /join/<postlogin> URLs.
+    
+    Redirects old /join/<postlogin> to /join?next=<path>
+    """
+    try:
+        decoded = unquote(path)
+        data = json.loads(decoded)
+        next_url = "/" + data.get("endpoint", "")
+    except (json.JSONDecodeError, ValueError):
+        next_url = f"/{path}"
+    
+    return RedirectResponse(url=f"/join?next={next_url}", status_code=301)
