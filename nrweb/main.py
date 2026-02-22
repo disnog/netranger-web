@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-
-# nrweb - __init__.py
+# main.py
 # Copyright (C) 2020-2026 DisNOG.org
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,11 +14,20 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from flask import Flask
+"""Entry point for the nrweb Flask application."""
 
-from .config import get_settings
+from nrweb import app
+from nrweb.config import get_settings
 
-app = Flask(__name__)
-app.secret_key = get_settings().secret_key
 
-from nrweb import views  # noqa: E402
+def main():
+    settings = get_settings()
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=settings.debug,
+    )
+
+
+if __name__ == "__main__":
+    main()

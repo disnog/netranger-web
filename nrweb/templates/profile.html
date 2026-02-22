@@ -1,51 +1,39 @@
+<!--
+  profile.html
+  Copyright (C) 2020-2026 DisNOG.org
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 {% extends "base.html" %}
-{% block pagetitle %}Member Profile{% endblock %}
+
+{% block title %}{{ profile_user.name }} - Network Ranger{% endblock %}
+
 {% block content %}
-<div class="card mb-3 text-center">
-    <div class="card-img-top text-center">
-        <img src="https://cdn.discordapp.com/{% if user['avatar'] %}avatars/{{user['id']}}/{{user['avatar']}}{% else %}embed/avatars/{{ user['discriminator'] | int %5 }}{% endif %}.png"
-             class="card-img-top rounded-circle p-4" alt="" style="max-width: 12rem;">
-    </div>
-    <div class="card-body text-center h4">
-        {{user['name']}}#{{user['discriminator']}}
-        {% if user['nick'] %}
-        <div class="h5">
-            {{user['nick']}}
+<div class="row">
+    <div class="col-md-4 text-center">
+        {% if discord_user and discord_user.avatar %}
+        <img src="https://cdn.discordapp.com/avatars/{{ profile_user.id }}/{{ discord_user.avatar }}.png?size=256" 
+             class="rounded-circle mb-3" alt="Avatar" style="width: 150px; height: 150px;">
+        {% else %}
+        <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+             style="width: 150px; height: 150px;">
+            <span class="display-4 text-white">{{ profile_user.name[0] }}</span>
         </div>
         {% endif %}
     </div>
-    <div class="card-body">
-        <div class="card-columns text-left">
-            <div class="card">
-                <h5 class="card-header">
-                    Member Info
-                </h5>
-                <ul class="list-group list-group-flush">
-                    <table class="table table-borderless">
-                        <tbody>
-                        <tr>
-                            <th scope="row">Member #</th>
-                            <td>{{user.member_number}}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">First Joined</th>
-                            <td>{{user.first_joined_at | utctime}}</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </ul>
-            </div>
-            <div class="card">
-                <h5 class="card-header">
-                    Persistent Roles
-                </h5>
-                <ul class="list-group list-group-flush">
-                    {% for role in user.permanent_roles %}
-                    <li class="list-group-item">{{role}}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
+    
+    <div class="col-md-8">
+        <h1>{{ profile_user.name }}{% if profile_user.discriminator and profile_user.discriminator != '0' %}#{{ profile_user.discriminator }}{% endif %}</h1>
+        
+        <dl class="row">
+            <dt class="col-sm-4">Member Number</dt>
+            <dd class="col-sm-8">{{ profile_user.member_number or 'N/A' }}</dd>
+            
+            <dt class="col-sm-4">First Joined</dt>
+            <dd class="col-sm-8">{{ profile_user.first_joined_at|utctime if profile_user.first_joined_at else 'Unknown' }}</dd>
+            
+            <dt class="col-sm-4">Roles</dt>
+            <dd class="col-sm-8">{{ profile_user.permanent_roles|join(', ') or 'None' }}</dd>
+        </dl>
     </div>
 </div>
 {% endblock %}
