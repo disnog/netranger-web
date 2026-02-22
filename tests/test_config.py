@@ -8,7 +8,6 @@ import pytest
 import nrweb.config as config_module
 from nrweb.config import Settings, get_settings
 
-
 # ---------------------------------------------------------------------------
 # Settings.from_env()
 # ---------------------------------------------------------------------------

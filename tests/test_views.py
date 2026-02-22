@@ -3,12 +3,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
-
-from nrweb.session import SessionData, SessionManager
-
+from nrweb.session import SessionData
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -17,6 +14,7 @@ from nrweb.session import SessionData, SessionManager
 def _make_signed_cookie(app, session_data: SessionData) -> str:
     """Produce a signed session cookie value for use in test requests."""
     from itsdangerous import URLSafeTimedSerializer
+
     from nrweb.config import get_settings
     s = URLSafeTimedSerializer(get_settings().secret_key)
     return s.dumps(session_data.to_dict())
@@ -109,15 +107,13 @@ def test_myprofile_accessible_when_logged_in(client, app, logged_in_session):
     db_user = MagicMock()
     db_user.permanent_roles = ["Member"]
 
+    client.set_cookie("nrweb_session", cookie_val)
     with patch("nrweb.views.db_query", return_value=db_user), \
          patch("nrweb.views.DiscordAPI") as MockAPI:
         instance = MockAPI.return_value
         instance.get_user.return_value = {"id": "111222333", "username": "testuser"}
 
-        resp = client.get(
-            "/myprofile",
-            headers={"Cookie": f"nrweb_session={cookie_val}"},
-        )
+        resp = client.get("/myprofile")
 
     assert resp.status_code == 200
 
@@ -131,11 +127,9 @@ def test_members_route_forbidden_for_non_member(client, app, logged_in_session):
     db_user = MagicMock()
     db_user.permanent_roles = ["periphery"]
 
+    client.set_cookie("nrweb_session", cookie_val)
     with patch("nrweb.views.db_query", return_value=db_user):
-        resp = client.get(
-            "/members",
-            headers={"Cookie": f"nrweb_session={cookie_val}"},
-        )
+        resp = client.get("/members")
 
     assert resp.status_code == 403
 
@@ -145,17 +139,10 @@ def test_members_route_accessible_for_member(client, app, logged_in_session):
     db_user = MagicMock()
     db_user.permanent_roles = ["Member"]
 
-    def mock_db_query(coro):
-        # First call: requires_member check; second call: list_members
-        return db_user if not hasattr(mock_db_query, "_called") else []
-
+    client.set_cookie("nrweb_session", cookie_val)
     with patch("nrweb.views.db_query") as mock_db:
         mock_db.side_effect = [db_user, []]
-
-        resp = client.get(
-            "/members",
-            headers={"Cookie": f"nrweb_session={cookie_val}"},
-        )
+        resp = client.get("/members")
 
     assert resp.status_code == 200
 
@@ -165,13 +152,10 @@ def test_profile_not_found_returns_404(client, app, logged_in_session):
     db_user_member = MagicMock()
     db_user_member.permanent_roles = ["Member"]
 
+    client.set_cookie("nrweb_session", cookie_val)
     with patch("nrweb.views.db_query") as mock_db:
         mock_db.side_effect = [db_user_member, None]  # member check passes, profile not found
-
-        resp = client.get(
-            "/members/99999",
-            headers={"Cookie": f"nrweb_session={cookie_val}"},
-        )
+        resp = client.get("/members/99999")
 
     assert resp.status_code == 404
 
@@ -195,10 +179,8 @@ def test_join_redirects_without_guilds_join_scope(client, app):
     )
     cookie_val = _make_signed_cookie(app, session)
 
-    resp = client.get(
-        "/join",
-        headers={"Cookie": f"nrweb_session={cookie_val}"},
-    )
+    client.set_cookie("nrweb_session", cookie_val)
+    resp = client.get("/join")
 
     assert resp.status_code == 302
     assert "login" in resp.headers["Location"]
@@ -207,14 +189,11 @@ def test_join_redirects_without_guilds_join_scope(client, app):
 def test_join_shows_form_for_new_user(client, app, logged_in_session):
     cookie_val = _make_signed_cookie(app, logged_in_session)
 
+    client.set_cookie("nrweb_session", cookie_val)
     with patch("nrweb.views.db_query", return_value=None), \
          patch("nrweb.views.get_settings") as mock_settings:
         mock_settings.return_value.guild_id = "123456789"
-
-        resp = client.get(
-            "/join",
-            headers={"Cookie": f"nrweb_session={cookie_val}"},
-        )
+        resp = client.get("/join")
 
     assert resp.status_code == 200
     assert b"join" in resp.data.lower() or b"userclass" in resp.data.lower()
@@ -223,10 +202,10 @@ def test_join_shows_form_for_new_user(client, app, logged_in_session):
 def test_join_post_missing_csrf_redirects(client, app, logged_in_session):
     cookie_val = _make_signed_cookie(app, logged_in_session)
 
+    client.set_cookie("nrweb_session", cookie_val)
     resp = client.post(
         "/join",
         data={"userclass": "Member", "accept_general_rules": "on"},
-        headers={"Cookie": f"nrweb_session={cookie_val}"},
     )
 
     assert resp.status_code == 302

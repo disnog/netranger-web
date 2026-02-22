@@ -24,19 +24,21 @@ from typing import Any
 
 import httpx
 from flask import abort, g, redirect, render_template, request, url_for
-
 from netranger_db import Database
 
 from nrweb import app
+
 from .config import get_settings
 from .discord_client import DiscordAPI, DiscordOAuth, DiscordUser
 from .session import (
     SessionData,
     SessionManager,
-    flash as session_flash,
     generate_csrf_token,
     get_flashed_messages,
     validate_csrf_token,
+)
+from .session import (
+    flash as session_flash,
 )
 
 _session_mgr = SessionManager()

@@ -6,7 +6,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from itsdangerous import URLSafeTimedSerializer
 
 from nrweb.session import (
     SessionData,
@@ -16,7 +15,6 @@ from nrweb.session import (
     get_flashed_messages,
     validate_csrf_token,
 )
-
 
 # ---------------------------------------------------------------------------
 # SessionData properties

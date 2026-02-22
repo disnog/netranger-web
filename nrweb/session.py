@@ -51,7 +51,7 @@ class SessionData:
 
     @property
     def has_guilds_join_scope(self) -> bool:
-        return self.token_scope and "guilds.join" in self.token_scope
+        return bool(self.token_scope and "guilds.join" in self.token_scope)
 
     def to_dict(self) -> dict:
         return asdict(self)

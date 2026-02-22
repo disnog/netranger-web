@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from datetime import datetime, timezone
+
 from flask import Flask
 
 from .config import get_settings
@@ -23,4 +25,13 @@ from .config import get_settings
 app = Flask(__name__)
 app.secret_key = get_settings().secret_key
 
-from nrweb import views  # noqa: E402
+
+@app.template_filter("utctime")
+def utctime_filter(dt: datetime) -> str:
+    """Format a datetime as a UTC timestamp string."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.strftime("%Y-%m-%d %H:%M UTC")
+
+
+from nrweb import views  # noqa: E402, F401

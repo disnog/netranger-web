@@ -10,7 +10,6 @@ import pytest
 
 from nrweb.discord_client import DiscordAPI, DiscordOAuth, DiscordToken, DiscordUser
 
-
 # ---------------------------------------------------------------------------
 # DiscordUser
 # ---------------------------------------------------------------------------
