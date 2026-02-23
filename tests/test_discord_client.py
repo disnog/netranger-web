@@ -135,6 +135,40 @@ def test_get_authorization_url_custom_state(mock_oauth_settings):
     assert "state=my-state" in url
 
 
+def test_get_authorization_url_falls_back_to_request_context():
+    from nrweb import app
+
+    with patch("nrweb.discord_client.get_settings") as mock_settings:
+        mock_settings.return_value.oauth2_client_id = "client-id"
+        mock_settings.return_value.oauth2_client_secret = "client-secret"
+        mock_settings.return_value.oauth2_redirect_uri = None
+        mock_settings.return_value.api_base_url = "https://discord.com/api/v10"
+        mock_settings.return_value.authorization_url = "https://discord.com/api/v10/oauth2/authorize"
+        mock_settings.return_value.token_url = "https://discord.com/api/v10/oauth2/token"
+
+        with app.test_request_context("/login", base_url="https://disnog.org"):
+            oauth = DiscordOAuth()
+            url, _state = oauth.get_authorization_url(scope="identify")
+            oauth.close()
+
+    assert "redirect_uri=https%3A%2F%2Fdisnog.org%2Flogin_callback" in url
+
+
+def test_get_authorization_url_raises_without_redirect_uri_or_request_context():
+    with patch("nrweb.discord_client.get_settings") as mock_settings:
+        mock_settings.return_value.oauth2_client_id = "client-id"
+        mock_settings.return_value.oauth2_client_secret = "client-secret"
+        mock_settings.return_value.oauth2_redirect_uri = None
+        mock_settings.return_value.api_base_url = "https://discord.com/api/v10"
+        mock_settings.return_value.authorization_url = "https://discord.com/api/v10/oauth2/authorize"
+        mock_settings.return_value.token_url = "https://discord.com/api/v10/oauth2/token"
+
+        oauth = DiscordOAuth()
+        with pytest.raises(RuntimeError, match="OAUTH2_REDIRECT_URI"):
+            oauth.get_authorization_url(scope="identify")
+        oauth.close()
+
+
 def test_exchange_code_returns_token(mock_oauth_settings):
     with patch("httpx.Client") as mock_client_cls:
         mock_client = MagicMock()
@@ -148,6 +182,31 @@ def test_exchange_code_returns_token(mock_oauth_settings):
     assert token.access_token == "access-abc"
     assert token.refresh_token == "refresh-xyz"
     assert "guilds.join" in token.scopes
+
+
+def test_exchange_code_uses_request_context_redirect_uri():
+    from nrweb import app
+
+    with patch("nrweb.discord_client.get_settings") as mock_settings:
+        mock_settings.return_value.oauth2_client_id = "client-id"
+        mock_settings.return_value.oauth2_client_secret = "client-secret"
+        mock_settings.return_value.oauth2_redirect_uri = None
+        mock_settings.return_value.api_base_url = "https://discord.com/api/v10"
+        mock_settings.return_value.authorization_url = "https://discord.com/api/v10/oauth2/authorize"
+        mock_settings.return_value.token_url = "https://discord.com/api/v10/oauth2/token"
+
+        with patch("httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client_cls.return_value = mock_client
+            mock_client.post.return_value = _make_response(SAMPLE_TOKEN_RESPONSE)
+
+            with app.test_request_context("/login_callback", base_url="https://disnog.org"):
+                oauth = DiscordOAuth()
+                oauth.exchange_code("auth-code")
+                oauth.close()
+
+    posted_data = mock_client.post.call_args.kwargs["data"]
+    assert posted_data["redirect_uri"] == "https://disnog.org/login_callback"
 
 
 def test_exchange_code_raises_on_http_error(mock_oauth_settings):

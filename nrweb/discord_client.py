@@ -24,6 +24,7 @@ from typing import Any, Optional
 from urllib.parse import urlencode
 
 import httpx
+from flask import has_request_context, url_for
 
 from .config import get_settings
 
@@ -72,8 +73,20 @@ class DiscordOAuth:
 
     def __init__(self, redirect_uri: Optional[str] = None):
         self.settings = get_settings()
-        self.redirect_uri = redirect_uri or self.settings.oauth2_redirect_uri
+        self.redirect_uri = redirect_uri
         self._http = httpx.Client()
+
+    def _get_redirect_uri(self) -> str:
+        """Resolve redirect URI from override, settings, or active Flask request."""
+        if self.redirect_uri:
+            return self.redirect_uri
+        if self.settings.oauth2_redirect_uri:
+            return self.settings.oauth2_redirect_uri
+        if has_request_context():
+            return url_for("login_callback", _external=True)
+        raise RuntimeError(
+            "OAUTH2_REDIRECT_URI is not set and no request context is available"
+        )
 
     def get_authorization_url(self, scope: str = "identify", state: Optional[str] = None) -> tuple[str, str]:
         """
@@ -85,7 +98,7 @@ class DiscordOAuth:
 
         params = {
             "client_id": self.settings.oauth2_client_id,
-            "redirect_uri": self.redirect_uri,
+            "redirect_uri": self._get_redirect_uri(),
             "response_type": "code",
             "scope": scope,
             "state": state,
@@ -101,7 +114,7 @@ class DiscordOAuth:
             "client_secret": self.settings.oauth2_client_secret,
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": self.redirect_uri,
+            "redirect_uri": self._get_redirect_uri(),
         }
 
         resp = self._http.post(
