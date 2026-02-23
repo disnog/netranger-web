@@ -43,18 +43,37 @@ spec:
                 secretKeyRef:
                   name: network-ranger
                   key: OAUTH2_CLIENT_SECRET
-            - name: MONGO_HOST
-              value: "mongodb:27017"
-            - name: MONGO_USER
-              value: "root"
-            - name: MONGO_NAME
-              value: "network_ranger"
-            - name: MONGO_PASS
+            - name: GUILD_ID
               valueFrom:
                 secretKeyRef:
-                  name: mongodb
-                  key: mongodb-root-password
-#      restartPolicy: Always
+                  name: network-ranger
+                  key: GUILD_ID
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: DB_HOST
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: DB_PASS
+            - name: DB_NAME
+              value: "netranger"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: network-ranger
+                  key: SECRET_KEY
+            - name: NRWEB_ENVIRONMENT
+              value: "dev"
 
 ---
 apiVersion: v1
