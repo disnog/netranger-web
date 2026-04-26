@@ -3,7 +3,10 @@
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlsplit
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from nrweb.session import SessionData
 
@@ -209,3 +212,107 @@ def test_join_post_missing_csrf_redirects(client, app, logged_in_session):
     )
 
     assert resp.status_code == 302
+
+
+def test_login_callback_preserves_internal_post_login_path_for_join_flow(client, app):
+    session = SessionData(
+        oauth_state="test-state",
+        post_login_url="/members/42?tab=activity",
+    )
+    client.set_cookie("nrweb_session", _make_signed_cookie(app, session))
+
+    with patch("nrweb.views.DiscordOAuth") as MockOAuth:
+        instance = MockOAuth.return_value
+        instance.exchange_code.return_value = MagicMock(
+            access_token="access-token",
+            refresh_token="refresh-token",
+            scope="identify guilds.join",
+        )
+        instance.get_user.return_value = MagicMock(
+            id="111222333",
+            username="alice",
+            discriminator="0",
+            avatar=None,
+        )
+
+        resp = client.get("/login_callback?state=test-state&code=abc")
+
+    assert resp.status_code == 302
+    split = urlsplit(resp.headers["Location"])
+    assert split.path == "/join"
+    assert parse_qs(split.query)["next"] == ["/members/42?tab=activity"]
+
+
+@pytest.mark.parametrize("target", ["https://evil.example/pwn", "//evil.example/pwn"])
+def test_login_callback_discards_external_post_login_path(client, app, target):
+    session = SessionData(
+        oauth_state="test-state",
+        post_login_url=target,
+    )
+    client.set_cookie("nrweb_session", _make_signed_cookie(app, session))
+
+    with patch("nrweb.views.DiscordOAuth") as MockOAuth:
+        instance = MockOAuth.return_value
+        instance.exchange_code.return_value = MagicMock(
+            access_token="access-token",
+            refresh_token="refresh-token",
+            scope="identify guilds.join",
+        )
+        instance.get_user.return_value = MagicMock(
+            id="111222333",
+            username="alice",
+            discriminator="0",
+            avatar=None,
+        )
+
+        resp = client.get("/login_callback?state=test-state&code=abc")
+
+    assert resp.status_code == 302
+    split = urlsplit(resp.headers["Location"])
+    assert split.path == "/join"
+    assert "next" not in parse_qs(split.query)
+
+
+def test_join_success_redirects_to_internal_next_path(client, app, logged_in_session):
+    client.set_cookie("nrweb_session", _make_signed_cookie(app, logged_in_session))
+    db_user = MagicMock()
+    db_user.permanent_roles = ["Member"]
+    guild_role = MagicMock()
+    guild_role.role_id = "role-123"
+
+    with patch("nrweb.views.db_query") as mock_db, \
+         patch("nrweb.views.get_settings") as mock_settings, \
+         patch("nrweb.views.DiscordAPI") as MockAPI:
+        mock_db.side_effect = [db_user, guild_role]
+        mock_settings.return_value.guild_id = "123456789"
+        MockAPI.return_value.add_guild_member.return_value = (True, 201)
+
+        resp = client.get("/join", query_string={"next": "/members/42?tab=activity"})
+
+    assert resp.status_code == 302
+    split = urlsplit(resp.headers["Location"])
+    assert split.path == "/members/42"
+    assert split.query == "tab=activity"
+
+
+@pytest.mark.parametrize("target", ["https://evil.example/pwn", "//evil.example/pwn"])
+def test_join_success_rejects_external_next_path(client, app, logged_in_session, target):
+    client.set_cookie("nrweb_session", _make_signed_cookie(app, logged_in_session))
+    db_user = MagicMock()
+    db_user.permanent_roles = ["Member"]
+    guild_role = MagicMock()
+    guild_role.role_id = "role-123"
+
+    with patch("nrweb.views.db_query") as mock_db, \
+         patch("nrweb.views.get_settings") as mock_settings, \
+         patch("nrweb.views.DiscordAPI") as MockAPI:
+        mock_db.side_effect = [db_user, guild_role]
+        mock_settings.return_value.guild_id = "123456789"
+        MockAPI.return_value.add_guild_member.return_value = (True, 201)
+
+        resp = client.get("/join", query_string={"next": target})
+
+    assert resp.status_code == 302
+    split = urlsplit(resp.headers["Location"])
+    assert split.path == "/"
+    assert "evil.example" not in resp.headers["Location"]

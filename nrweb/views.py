@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 from functools import wraps
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from flask import abort, g, redirect, render_template, request, url_for
@@ -52,6 +53,34 @@ USERCLASS_CHOICES = [
     ("periphery", "General business or enterprise IT, server administration, or coding"),
     ("recruiter", "Posting network engineering jobs I'm hoping to fill"),
 ]
+
+
+def _normalize_local_redirect_target(target: str | None) -> str | None:
+    """Accept only app-local redirect targets."""
+    if not target:
+        return None
+
+    candidate = target.strip()
+    if not candidate or candidate.startswith("//"):
+        return None
+
+    parsed = urlsplit(candidate)
+    if parsed.scheme or parsed.netloc or parsed.fragment:
+        return None
+    if not parsed.path.startswith("/"):
+        return None
+
+    normalized = parsed.path
+    if parsed.query:
+        normalized = f"{normalized}?{parsed.query}"
+    return normalized
+
+
+def _current_request_target() -> str:
+    """Build the current request target as an app-local path."""
+    if not request.query_string:
+        return request.path
+    return f"{request.path}?{request.query_string.decode()}"
 
 
 def db_query(coro_factory) -> Any:
@@ -101,7 +130,7 @@ def requires_login(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not g.session_data.is_logged_in:
-            g.session_data.post_login_url = request.url
+            g.session_data.post_login_url = _current_request_target()
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return wrapper
@@ -112,7 +141,7 @@ def requires_member(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not g.session_data.is_logged_in:
-            g.session_data.post_login_url = request.url
+            g.session_data.post_login_url = _current_request_target()
             return redirect(url_for("login"))
         user_id = int(g.session_data.user_id)
         db_user = db_query(lambda db: db.users.get(user_id))
@@ -249,19 +278,21 @@ def login_callback():
     session_flash(g.session_data, "Logged in successfully.", "success")
 
     if g.session_data.has_guilds_join_scope:
-        post_login = g.session_data.post_login_url
+        post_login = _normalize_local_redirect_target(g.session_data.post_login_url)
         g.session_data.post_login_url = None
         return redirect(url_for("join", next=post_login) if post_login else url_for("join"))
 
-    post_login = g.session_data.post_login_url
+    post_login = _normalize_local_redirect_target(g.session_data.post_login_url)
     g.session_data.post_login_url = None
-    return redirect(post_login or url_for("home"))
+    return redirect(post_login or "/")
 
 
 @app.route("/join", methods=["GET", "POST"])
 def join():
     if not g.session_data.is_logged_in or not g.session_data.has_guilds_join_scope:
-        g.session_data.post_login_url = request.args.get("next") or request.url
+        g.session_data.post_login_url = _normalize_local_redirect_target(
+            request.args.get("next")
+        )
         return redirect(url_for("login", scope="identify guilds.join"))
 
     settings = get_settings()
@@ -334,7 +365,9 @@ def join():
         )
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 403:
-            g.session_data.post_login_url = request.args.get("next")
+            g.session_data.post_login_url = _normalize_local_redirect_target(
+                request.args.get("next")
+            )
             return redirect(url_for("login", scope="identify guilds.join"))
         app.logger.error("add_guild_member failed: %s", exc)
         session_flash(g.session_data, "Failed to join Discord server. Please try again.", "danger")
@@ -352,7 +385,7 @@ def join():
         _sync_roles(settings.guild_id, g.session_data.user_id, roles_to_assign)
         session_flash(g.session_data, "Your Discord roles have been synchronized.", "success")
 
-    next_url = request.args.get("next") or url_for("home")
+    next_url = _normalize_local_redirect_target(request.args.get("next")) or "/"
     return redirect(next_url)
 
 
