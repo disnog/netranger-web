@@ -94,7 +94,9 @@ docker run -p 5000:5000 --env-file .env netranger-web
 Sessions are now stored in signed cookies (using `itsdangerous`):
 - No server-side session storage needed
 - Stateless — scales horizontally
-- Same security model as Flask sessions
+- Use a dedicated high-entropy `SECRET_KEY` in production
+- OAuth access tokens are retained only during pending `guilds.join` flows
+- OAuth refresh tokens are not stored
 
 ### Key Framework Changes
 
@@ -200,6 +202,8 @@ livenessProbe:
    - Accept rules
    - Select userclass
    - Verify guild join
+   - Verify a full Member receives a member number even if they were already in the Discord guild
+   - Verify the post-join session no longer contains a Discord OAuth access token
 
 5. Run the test suite:
    ```bash

@@ -38,7 +38,6 @@ class SessionData:
     discriminator: Optional[str] = None
     avatar: Optional[str] = None
     access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
     token_scope: Optional[str] = None
     oauth_state: Optional[str] = None
     post_login_url: Optional[str] = None
@@ -47,11 +46,15 @@ class SessionData:
 
     @property
     def is_logged_in(self) -> bool:
-        return self.user_id is not None and self.access_token is not None
+        return self.user_id is not None
 
     @property
     def has_guilds_join_scope(self) -> bool:
-        return bool(self.token_scope and "guilds.join" in self.token_scope)
+        return bool(
+            self.access_token
+            and self.token_scope
+            and "guilds.join" in self.token_scope.split()
+        )
 
     def to_dict(self) -> dict:
         return asdict(self)

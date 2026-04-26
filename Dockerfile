@@ -7,10 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /
 
 # Install dependencies
 COPY pyproject.toml README.md ./
-RUN pip install --no-cache-dir .
-
-# Copy application
 COPY nrweb/ ./nrweb/
+RUN pip install --no-cache-dir .
 
 # Run with gunicorn
 EXPOSE 5000

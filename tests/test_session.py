@@ -28,9 +28,9 @@ def test_is_logged_in_false_no_user_id(anonymous_session):
     assert anonymous_session.is_logged_in is False
 
 
-def test_is_logged_in_requires_both_user_id_and_access_token():
+def test_is_logged_in_requires_user_id_only():
     s = SessionData(user_id="123", access_token=None)
-    assert s.is_logged_in is False
+    assert s.is_logged_in is True
 
     s2 = SessionData(user_id=None, access_token="tok")
     assert s2.is_logged_in is False
@@ -42,6 +42,11 @@ def test_has_guilds_join_scope_true(logged_in_session):
 
 def test_has_guilds_join_scope_false_identify_only():
     s = SessionData(token_scope="identify")
+    assert s.has_guilds_join_scope is False
+
+
+def test_has_guilds_join_scope_requires_access_token():
+    s = SessionData(token_scope="identify guilds.join", access_token=None)
     assert s.has_guilds_join_scope is False
 
 

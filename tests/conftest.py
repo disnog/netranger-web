@@ -52,7 +52,6 @@ def logged_in_session():
         discriminator="0001",
         avatar="abc123",
         access_token="fake-access-token",
-        refresh_token="fake-refresh-token",
         token_scope="identify guilds.join",
     )
 

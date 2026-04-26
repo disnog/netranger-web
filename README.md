@@ -71,6 +71,9 @@ docker run -p 5000:5000 --env-file .env netranger-web
 - User profiles
 - Join flow with rules acceptance
 - Automatic guild join with role assignment
+- Full-member number assignment during web join, including users who are already in the Discord guild
+- OAuth access tokens are kept in the signed session only while a `guilds.join`
+  flow is pending; refresh tokens are not stored
 
 ## Routes
 
@@ -138,6 +141,13 @@ tests/
 ruff check .
 ruff check . --fix   # auto-fix safe issues
 ```
+
+## Session Security
+
+Sessions are signed cookies. Set a dedicated high-entropy `SECRET_KEY` in
+production and serve only over HTTPS. Discord OAuth access tokens are retained
+only long enough to complete the `guilds.join` flow, then removed from the
+session. Refresh tokens are not stored.
 
 ## License
 

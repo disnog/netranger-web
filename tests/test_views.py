@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlsplit
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -293,6 +293,43 @@ def test_join_success_redirects_to_internal_next_path(client, app, logged_in_ses
     split = urlsplit(resp.headers["Location"])
     assert split.path == "/members/42"
     assert split.query == "tab=activity"
+
+
+def test_join_post_member_assigns_member_number(client, app, logged_in_session):
+    import asyncio
+
+    logged_in_session.csrf_token = "csrf-token"
+    client.set_cookie("nrweb_session", _make_signed_cookie(app, logged_in_session))
+    db_user = MagicMock()
+    db_user.permanent_roles = ["Member"]
+    fake_db = MagicMock()
+    fake_db.users.upsert = AsyncMock()
+    fake_db.users.add_permanent_role = AsyncMock()
+    fake_db.users.assign_member_number = AsyncMock(return_value=12)
+    fake_db.users.get = AsyncMock(return_value=db_user)
+    fake_db.guilds.get_role_by_significance = AsyncMock(return_value=None)
+
+    def run_db_query(coro_factory):
+        return asyncio.run(coro_factory(fake_db))
+
+    with patch("nrweb.views.db_query", side_effect=run_db_query), \
+         patch("nrweb.views.get_settings") as mock_settings, \
+         patch("nrweb.views.DiscordAPI") as MockAPI:
+        mock_settings.return_value.guild_id = "123456789"
+        MockAPI.return_value.add_guild_member.return_value = (True, 201)
+
+        resp = client.post(
+            "/join",
+            data={
+                "csrf_token": "csrf-token",
+                "userclass": "Member",
+                "accept_general_rules": "on",
+                "accept_member_rules": "on",
+            },
+        )
+
+    assert resp.status_code == 302
+    fake_db.users.assign_member_number.assert_awaited_once_with(111222333)
 
 
 @pytest.mark.parametrize("target", ["https://evil.example/pwn", "//evil.example/pwn"])

@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Any
 from urllib.parse import urlsplit
@@ -270,8 +271,9 @@ def login_callback():
     g.session_data.username = discord_user.username
     g.session_data.discriminator = discord_user.discriminator
     g.session_data.avatar = discord_user.avatar
-    g.session_data.access_token = token.access_token
-    g.session_data.refresh_token = token.refresh_token
+    g.session_data.access_token = (
+        token.access_token if "guilds.join" in token.scope.split() else None
+    )
     g.session_data.token_scope = token.scope
     g.session_data.oauth_state = None
 
@@ -320,10 +322,18 @@ def join():
         _name = g.session_data.username or ""
         _discriminator = g.session_data.discriminator
         _userclass = userclass
+        _joined_at = datetime.now(timezone.utc)
 
         async def _save_role(db):
-            await db.users.upsert(user_id, _name, _discriminator)
+            await db.users.upsert(
+                user_id,
+                _name,
+                _discriminator,
+                first_joined_at=_joined_at,
+            )
             await db.users.add_permanent_role(user_id, _userclass)
+            if _userclass == "Member":
+                await db.users.assign_member_number(user_id)
 
         db_query(_save_role)
 
@@ -384,6 +394,9 @@ def join():
     else:
         _sync_roles(settings.guild_id, g.session_data.user_id, roles_to_assign)
         session_flash(g.session_data, "Your Discord roles have been synchronized.", "success")
+
+    g.session_data.access_token = None
+    g.session_data.token_scope = None
 
     next_url = _normalize_local_redirect_target(request.args.get("next")) or "/"
     return redirect(next_url)
