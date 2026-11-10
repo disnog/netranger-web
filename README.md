@@ -72,6 +72,9 @@ docker run -p 5000:5000 --env-file .env netranger-web
 - Join flow with rules acceptance
 - Automatic guild join with role assignment
 - Full-member number assignment during web join, including users who are already in the Discord guild
+- Welcome announcement to the DB-mapped `greeting` channel (`periphery_greeting`
+  for periphery users) when a join adds the user to the guild or gives them a
+  new role, posted through a short-lived "DisNOG.org" webhook as legacy did
 - OAuth access tokens are kept in the signed session only while a `guilds.join`
   flow is pending; refresh tokens are not stored
 

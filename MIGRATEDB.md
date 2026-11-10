@@ -203,6 +203,7 @@ livenessProbe:
    - Select userclass
    - Verify guild join
    - Verify a full Member receives a member number even if they were already in the Discord guild
+   - Verify one "Welcome @user, member #N" post lands in the channel mapped to `greeting` (or `periphery_greeting` for periphery users), and the bot does not also say "welcome back"
    - Verify the post-join session no longer contains a Discord OAuth access token
 
 5. Run the test suite:

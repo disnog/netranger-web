@@ -385,15 +385,29 @@ def join():
     finally:
         api.close()
 
+    # Announce the member the first time they get their roles, as legacy web
+    # did: when this request added them to the guild, or when they were
+    # already in the guild (e.g. waiting in the welcome channel) and this
+    # request gave them a role they didn't have. The bot doesn't announce
+    # members who arrive with their roles already attached.
     if was_added:
         session_flash(
             g.session_data,
             "You've joined the Discord server! Check your Discord client.",
             "success",
         )
+        newly_assigned = True
     else:
-        _sync_roles(settings.guild_id, g.session_data.user_id, roles_to_assign)
+        newly_assigned = _sync_roles(settings.guild_id, g.session_data.user_id, roles_to_assign) > 0
         session_flash(g.session_data, "Your Discord roles have been synchronized.", "success")
+
+    if newly_assigned:
+        _greet_new_member(
+            settings.guild_id,
+            g.session_data.user_id,
+            db_user.permanent_roles,
+            db_user.member_number,
+        )
 
     g.session_data.access_token = None
     g.session_data.token_scope = None
@@ -402,17 +416,91 @@ def join():
     return redirect(next_url)
 
 
-def _sync_roles(guild_id: str, user_id: str, role_ids: list[str]) -> None:
-    """Assign roles to an existing guild member."""
+def _sync_roles(guild_id: str, user_id: str, role_ids: list[str]) -> int:
+    """Give an existing guild member any of ``role_ids`` they lack.
+
+    Returns how many roles were newly assigned.
+    """
     api = DiscordAPI()
+    added = 0
     try:
+        current_roles: set[str] = set()
+        try:
+            member = api.get_guild_member(guild_id, user_id)
+            if member:
+                current_roles = {str(r) for r in member.get("roles", [])}
+        except Exception:
+            app.logger.exception("Failed to read guild member %s", user_id)
         for role_id in role_ids:
+            if str(role_id) in current_roles:
+                continue
             try:
                 api.add_member_role(guild_id, user_id, role_id)
+                added += 1
             except Exception:
                 app.logger.exception("Failed to assign role %s to user %s", role_id, user_id)
     finally:
         api.close()
+    return added
+
+
+GREETING_WEBHOOK_NAME = "DisNOG.org"
+
+
+def _greeting_channel_significance(permanent_roles: list[str]) -> str | None:
+    """Pick the DB channel significance that announces this kind of user."""
+    roles = set(permanent_roles)
+    if roles & {"Member", "recruiter"}:
+        return "greeting"
+    if "periphery" in roles:
+        return "periphery_greeting"
+    return None
+
+
+def _greet_new_member(
+    guild_id: str,
+    user_id: str,
+    permanent_roles: list[str],
+    member_number: int | None,
+) -> None:
+    """Post the welcome announcement to the DB-mapped greeting channel.
+
+    Mirrors legacy web: a short-lived webhook named "DisNOG.org" posts the
+    message and is deleted. Any failure is logged and never fails the join.
+    """
+    significance = _greeting_channel_significance(permanent_roles)
+    if not guild_id or not significance:
+        return
+    try:
+        channel = db_query(
+            lambda db: db.guilds.get_channel_by_significance(guild_id, significance)
+        )
+        if not channel:
+            app.logger.warning(
+                "No '%s' channel mapped for guild %s; welcome not posted", significance, guild_id
+            )
+            return
+
+        if member_number:
+            greeting = f"Welcome <@{user_id}>, member #{member_number}!"
+        else:
+            greeting = f"Welcome <@{user_id}>!"
+        content = (
+            f"{greeting} We're happy to have you. "
+            "Please feel free to take a moment to introduce yourself!"
+        )
+
+        api = DiscordAPI()
+        try:
+            webhook = api.create_webhook(channel.channel_id, GREETING_WEBHOOK_NAME)
+            try:
+                api.execute_webhook(webhook["id"], webhook["token"], content)
+            finally:
+                api.delete_webhook(webhook["id"], webhook["token"])
+        finally:
+            api.close()
+    except Exception:
+        app.logger.exception("Failed to post welcome for user %s", user_id)
 
 
 @app.route("/logout")
