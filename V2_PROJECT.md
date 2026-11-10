@@ -25,6 +25,7 @@ Modernize the Flask web portal from MongoDB-backed legacy views to a MariaDB-bac
 | Sessions | Flask signed session data | Explicit signed-cookie session manager | `README.md`, `MIGRATEDB.md` |
 | OAuth redirect handling | Endpoint payload in session | App-local `next` URL validation | `tests/test_views.py` |
 | Join flow | Assigns role and member number through MongoDB helper | Assigns role and Member number through MariaDB helper, then joins/syncs Discord | `README.md`, `MIGRATEDB.md` |
+| Welcome post | Webhook post to DB-mapped `greeting` / `periphery_greeting` channel | Same, on guild add or newly assigned role | `README.md`, `tests/test_join_greeting.py` |
 | Templates | Legacy Bootstrap/Jinja views | Updated templates, same route surface except `/` also serves home | `README.md`, `MIGRATEDB.md` |
 | Packaging | Requirements-only app | `pyproject.toml`, console script, Docker build | `README.md` |
 | Tests/CI | Minimal/no branch coverage | Unit/integration tests and lint | `.github/workflows/ci.yml` |
@@ -48,6 +49,7 @@ Modernize the Flask web portal from MongoDB-backed legacy views to a MariaDB-bac
 - `/join` requires `guilds.join` scope.
 - Member join persists accepted role, first-joined timestamp, and member number before Discord guild sync.
 - Existing guild members have roles synchronized without requiring a member-join event.
+- A join that adds the user to the guild, or gives them a role they lacked, posts one welcome to the DB-mapped greeting channel.
 - Discord OAuth access token is removed from the session after successful join; refresh token is not stored.
 - Docker image builds successfully.
 - `pytest` and `ruff check .` pass.
@@ -58,3 +60,4 @@ Modernize the Flask web portal from MongoDB-backed legacy views to a MariaDB-bac
 - Fixed during audit: full Member number assignment now happens in the web join path.
 - Fixed during audit: OAuth refresh tokens are not stored and access tokens are cleared after successful join.
 - Fixed during audit: test import ordering now satisfies ruff.
+- Fixed after review: the legacy welcome post to the DB-mapped greeting channel is restored. The bot no longer greets members web adds to the guild, so each new member gets one welcome.
